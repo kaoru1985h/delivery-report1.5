@@ -1,0 +1,1471 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>配送業務日報</title>
+  <meta name="theme-color" content="#0f7b8f">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="配送日報">
+  <link rel="manifest" href="manifest.webmanifest">
+  <style>
+    :root {
+      --ink: #172026;
+      --muted: #66727c;
+      --line: #d9e0e5;
+      --paper: #ffffff;
+      --wash: #f5f7f8;
+      --wash-strong: #eaf0f3;
+      --brand: #0f7b8f;
+      --brand-dark: #07576a;
+      --mint: #20a58b;
+      --amber: #c9821a;
+      --red: #c8463a;
+      --shadow: 0 16px 44px rgba(20, 40, 50, .11);
+      --radius: 8px;
+      --tap: 46px;
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      color: var(--ink);
+      background:
+        linear-gradient(180deg, rgba(15, 123, 143, .08), rgba(15, 123, 143, 0) 260px),
+        var(--wash);
+      font-family: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Yu Gothic", "Noto Sans JP", sans-serif;
+      line-height: 1.65;
+    }
+
+    button, input, select, textarea { font: inherit; }
+    button {
+      min-height: var(--tap);
+      border: 0;
+      border-radius: 7px;
+      padding: .72rem 1rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: transform .12s ease, box-shadow .2s ease, background .2s ease;
+    }
+    button:active { transform: translateY(1px); }
+    input, select, textarea {
+      width: 100%;
+      min-height: var(--tap);
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      padding: .72rem .82rem;
+      background: #fff;
+      color: var(--ink);
+    }
+    textarea { min-height: 120px; resize: vertical; }
+    input:focus, select:focus, textarea:focus {
+      outline: 3px solid rgba(15, 123, 143, .18);
+      border-color: var(--brand);
+    }
+
+    .app {
+      width: min(1160px, calc(100% - 28px));
+      margin: 18px auto 34px;
+    }
+    .topbar {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 1rem;
+      align-items: end;
+      padding: 20px 0 14px;
+    }
+    .title-kicker {
+      color: var(--brand-dark);
+      font-size: .78rem;
+      font-weight: 800;
+      letter-spacing: .08em;
+    }
+    h1 {
+      margin: .1rem 0 0;
+      font-size: clamp(1.65rem, 4vw, 3rem);
+      line-height: 1.1;
+      letter-spacing: 0;
+    }
+    .status-stack {
+      display: flex;
+      flex-wrap: wrap;
+      gap: .5rem;
+      justify-content: flex-end;
+    }
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: .42rem;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: rgba(255,255,255,.82);
+      padding: .46rem .72rem;
+      color: var(--muted);
+      font-size: .86rem;
+      white-space: nowrap;
+    }
+    .dot {
+      width: .62rem;
+      height: .62rem;
+      border-radius: 50%;
+      background: var(--mint);
+      display: inline-block;
+    }
+
+    .tabs {
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: .4rem;
+      background: rgba(245, 247, 248, .92);
+      backdrop-filter: blur(10px);
+      padding: .55rem 0 .75rem;
+    }
+    .tab-button {
+      color: var(--muted);
+      background: #fff;
+      border: 1px solid var(--line);
+      box-shadow: none;
+    }
+    .tab-button.active {
+      color: #fff;
+      background: var(--brand);
+      border-color: var(--brand);
+      box-shadow: 0 8px 24px rgba(15, 123, 143, .22);
+    }
+
+    .view { display: none; }
+    .view.active { display: block; }
+    .panel {
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: clamp(1rem, 2.4vw, 1.45rem);
+      box-shadow: var(--shadow);
+      margin-bottom: 1rem;
+    }
+    .panel.flat { box-shadow: none; }
+    .section-title {
+      display: flex;
+      justify-content: space-between;
+      align-items: start;
+      gap: 1rem;
+      margin-bottom: 1rem;
+      border-bottom: 2px solid var(--wash-strong);
+      padding-bottom: .7rem;
+    }
+    .section-title h2, .section-title h3 {
+      margin: 0;
+      font-size: 1.15rem;
+      line-height: 1.3;
+    }
+    .section-title p {
+      margin: .25rem 0 0;
+      color: var(--muted);
+      font-size: .9rem;
+    }
+
+    .grid-2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; }
+    .grid-3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1rem; }
+    .form-group { margin-bottom: 1rem; }
+    .form-group > label {
+      display: block;
+      margin-bottom: .42rem;
+      font-weight: 800;
+      color: #26333a;
+    }
+    .input-group { display: flex; gap: .45rem; align-items: center; }
+    .input-group input[type="time"] { min-width: 0; }
+    .now-btn { width: 54px; padding-inline: .5rem; flex: 0 0 auto; }
+
+    .btn-primary { color: #fff; background: var(--brand); }
+    .btn-primary:hover { background: var(--brand-dark); }
+    .btn-secondary { color: var(--ink); background: var(--wash-strong); }
+    .btn-secondary:hover { background: #dfe8ec; }
+    .btn-good { color: #fff; background: var(--mint); }
+    .btn-warn { color: #fff; background: var(--amber); }
+    .btn-danger { color: #fff; background: var(--red); }
+    .btn-ghost {
+      color: var(--brand-dark);
+      background: transparent;
+      border: 1px solid var(--line);
+    }
+    .button-row { display: flex; flex-wrap: wrap; gap: .65rem; align-items: center; }
+    .button-row button { flex: 0 0 auto; }
+
+    .dynamic-item {
+      position: relative;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: #fbfcfd;
+      padding: 1rem;
+      margin-bottom: .85rem;
+    }
+    .remove-btn {
+      position: absolute;
+      top: .55rem;
+      right: .55rem;
+      width: 36px;
+      min-height: 36px;
+      padding: 0;
+      color: var(--muted);
+      background: transparent;
+      border: 1px solid transparent;
+    }
+    .remove-btn:hover { color: var(--red); border-color: #f1c9c4; background: #fff7f6; }
+    .add-btn { width: 100%; }
+    .check-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+      gap: .55rem;
+    }
+    .check-item {
+      display: flex;
+      gap: .45rem;
+      align-items: center;
+      min-height: 40px;
+      padding: .42rem .55rem;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      background: #fff;
+    }
+    .check-item input { width: 20px; min-height: 20px; }
+    .tag-line { display: flex; flex-wrap: wrap; gap: .35rem; }
+    .tag {
+      display: inline-flex;
+      align-items: center;
+      border: 1px solid #cbdbe0;
+      border-radius: 999px;
+      padding: .26rem .56rem;
+      color: var(--brand-dark);
+      background: #f3fbfc;
+      font-size: .82rem;
+      font-weight: 700;
+    }
+    .tag.note-kind { color: #6a460d; background: #fff8e9; border-color: #ecd7ad; }
+
+    .metric-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 1rem;
+      margin-bottom: 1rem;
+    }
+    .metric-card {
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: #fff;
+      padding: 1rem;
+      min-height: 150px;
+      box-shadow: 0 8px 22px rgba(20, 40, 50, .06);
+    }
+    .metric-card.featured {
+      border-left: 5px solid var(--brand);
+    }
+    .metric-card.good { border-left: 5px solid var(--mint); }
+    .metric-card.warn { border-left: 5px solid var(--amber); }
+    .metric-label { color: var(--muted); font-size: .86rem; font-weight: 800; }
+    .metric-value {
+      margin: .28rem 0;
+      font-size: clamp(1.4rem, 4vw, 2.15rem);
+      line-height: 1.1;
+      font-weight: 900;
+      letter-spacing: 0;
+    }
+    .metric-sub { color: var(--muted); font-size: .9rem; }
+    .analysis-list { display: grid; gap: .75rem; }
+    .analysis-card {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: .9rem;
+      align-items: center;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: #fff;
+      padding: 1rem;
+    }
+    .analysis-card h3 { margin: 0; font-size: 1.02rem; }
+    .analysis-card p { margin: .2rem 0 0; color: var(--muted); }
+
+    .notes-layout {
+      display: grid;
+      grid-template-columns: minmax(280px, 380px) minmax(0, 1fr);
+      gap: 1rem;
+      align-items: start;
+    }
+    .filters {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: .65rem;
+      margin-bottom: .8rem;
+    }
+    .note-card {
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: #fff;
+      padding: .9rem;
+      margin-bottom: .7rem;
+    }
+    .note-card p { margin: .55rem 0 0; white-space: pre-wrap; }
+    .note-head {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      gap: .4rem;
+      color: var(--muted);
+      font-size: .86rem;
+    }
+
+    .storage-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 1rem;
+    }
+    .empty {
+      border: 1px dashed #bcc9cf;
+      border-radius: var(--radius);
+      background: #fbfcfd;
+      padding: 1rem;
+      color: var(--muted);
+    }
+    .help-text { color: var(--muted); font-size: .9rem; margin: .35rem 0 0; }
+    .sr-only {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0,0,0,0);
+      white-space: nowrap;
+      border: 0;
+    }
+
+    #print-sheet { display: none; }
+
+    @media (max-width: 760px) {
+      .app { width: min(100% - 18px, 1160px); margin-top: 8px; }
+      .topbar { grid-template-columns: 1fr; align-items: start; }
+      .status-stack { justify-content: flex-start; }
+      .tabs { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .grid-2, .grid-3, .metric-grid, .notes-layout, .storage-grid, .filters {
+        grid-template-columns: 1fr;
+      }
+      .analysis-card { grid-template-columns: 1fr; }
+      .button-row button, .save-actions button { width: 100%; }
+      .input-group { gap: .35rem; }
+      .panel { padding: 1rem; }
+    }
+
+    @media print {
+      @page { size: A4; margin: 10mm; }
+      body { background: #fff !important; color: #000; font-size: 9.5pt; }
+      .app { display: none !important; }
+      #print-sheet { display: block !important; }
+      .ps-title { text-align: center; font-size: 15pt; font-weight: 700; margin-bottom: 6mm; }
+      .ps-grid, .ps-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+      .ps-grid th, .ps-grid td, .ps-table th, .ps-table td {
+        border: 1px solid #000;
+        padding: 2.1mm 1.7mm;
+        vertical-align: middle;
+        color: #000;
+      }
+      .ps-center { text-align: center; }
+      .ps-small { font-size: 9pt; }
+      .ps-tight { padding: 1.55mm 1.55mm !important; line-height: 1.25; }
+      .ps-top { margin-bottom: 4mm; }
+      .ps-stamp-head { width: 12mm; font-weight: 700; }
+      .ps-stamp-cell { width: 16mm; height: 16mm; }
+      .ps-delivery-rows td, .ps-internal-rows td { height: 8mm; }
+      .ps-inline-label { font-weight: 700; margin-right: 2mm; }
+      #ps-next-route { display: inline; line-height: 1.25; }
+      #ps-notes { min-height: 12mm; white-space: pre-wrap; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app" id="app">
+    <header class="topbar">
+      <div>
+        <div class="title-kicker">DELIVERY DAILY REPORT</div>
+        <h1>配送業務日報</h1>
+      </div>
+      <div class="status-stack">
+        <span class="pill"><span class="dot"></span><span id="save-status">下書き準備中</span></span>
+        <span class="pill" id="send-status">未送信</span>
+      </div>
+    </header>
+
+    <nav class="tabs" aria-label="画面切り替え">
+      <button class="tab-button active" type="button" data-tab="report">日報入力</button>
+      <button class="tab-button" type="button" data-tab="analysis">分析</button>
+      <button class="tab-button" type="button" data-tab="notes">改善メモ</button>
+      <button class="tab-button" type="button" data-tab="storage">保存管理</button>
+    </nav>
+
+    <main>
+      <section class="view active" id="view-report">
+        <form id="report-form" onsubmit="return false;">
+          <div class="panel">
+            <div class="section-title">
+              <div>
+                <h2>基本情報</h2>
+                <p>入力中の内容はこの端末に自動保存されます。</p>
+              </div>
+            </div>
+            <div class="grid-2">
+              <div class="form-group">
+                <label for="report-date">日付</label>
+                <input type="date" id="report-date" required>
+              </div>
+              <div class="form-group">
+                <label for="user-name">氏名</label>
+                <input type="text" id="user-name" placeholder="名前を入力" required>
+              </div>
+            </div>
+          </div>
+
+          <div class="panel">
+            <div class="section-title">
+              <div>
+                <h2>配送業務</h2>
+                <p>提出用日報に印刷される内容です。</p>
+              </div>
+            </div>
+            <div class="grid-3">
+              <div class="form-group">
+                <label for="departure-time">出発時間</label>
+                <div class="input-group">
+                  <input type="time" id="departure-time">
+                  <button class="now-btn btn-secondary" type="button">今</button>
+                </div>
+              </div>
+              <div class="form-group">
+                <label for="return-time">帰社時間</label>
+                <div class="input-group">
+                  <input type="time" id="return-time">
+                  <button class="now-btn btn-secondary" type="button">今</button>
+                </div>
+              </div>
+              <div class="form-group">
+                <label for="mileage">走行距離 (km)</label>
+                <input type="number" id="mileage" placeholder="例: 123">
+              </div>
+            </div>
+            <div id="delivery-list"></div>
+            <button class="add-btn btn-good" id="add-delivery-btn" type="button">納品先を追加</button>
+          </div>
+
+          <div class="panel">
+            <div class="section-title">
+              <div>
+                <h2>社内業務</h2>
+                <p>作業タグは改善メモと分析にも使われます。</p>
+              </div>
+            </div>
+            <div id="internal-work-list"></div>
+            <button class="add-btn btn-good" id="add-internal-work-btn" type="button">社内業務を追加</button>
+          </div>
+
+          <div class="panel">
+            <div class="section-title">
+              <div>
+                <h2>申し送り事項</h2>
+                <p>提出用PDFにはここまでの内容だけが入ります。</p>
+              </div>
+            </div>
+            <div class="form-group">
+              <label>翌日配送ルート</label>
+              <div id="next-route-list"></div>
+              <button class="add-btn btn-secondary" id="add-next-route-btn" type="button">配送先を追加</button>
+            </div>
+            <div class="form-group">
+              <label for="special-notes">特記事項</label>
+              <textarea id="special-notes" placeholder="その他、特筆すべき事項があれば記入"></textarea>
+            </div>
+          </div>
+
+          <div class="panel flat">
+            <div class="section-title">
+              <div>
+                <h2>自分用の改善メモ</h2>
+                <p>提出用PDFには出ません。気づきやナレッジを残せます。</p>
+              </div>
+            </div>
+            <div class="button-row">
+              <button class="btn-ghost" id="quick-note-from-report" type="button">今日の改善メモを書く</button>
+            </div>
+          </div>
+
+          <div class="panel">
+            <div class="button-row save-actions">
+              <button class="btn-primary" id="print-btn" type="button">提出用PDF / 印刷</button>
+              <button class="btn-warn" id="submit-report-btn" type="button">日報を送信</button>
+              <button class="btn-secondary" id="save-now-btn" type="button">今すぐ下書き保存</button>
+              <button class="btn-danger" id="reset-day-btn" type="button">この日の入力をリセット</button>
+            </div>
+            <p class="help-text">スマホでは印刷画面や共有メニューからPDF保存できます。Googleスプレッドシート送信は次の段階で接続します。</p>
+          </div>
+        </form>
+      </section>
+
+      <section class="view" id="view-analysis">
+        <div class="metric-grid">
+          <article class="metric-card featured">
+            <div class="metric-label">作業別平均</div>
+            <div class="metric-value" id="metric-average-count">0件</div>
+            <div class="metric-sub">記録済みの作業タグ数</div>
+          </article>
+          <article class="metric-card good">
+            <div class="metric-label">1か月前との差分</div>
+            <div class="metric-value" id="metric-month-best">-</div>
+            <div class="metric-sub">直近7日平均 vs 30日前あたり7日平均</div>
+          </article>
+          <article class="metric-card warn">
+            <div class="metric-label">最近速くなった作業</div>
+            <div class="metric-value" id="metric-recent-best">-</div>
+            <div class="metric-sub">直近10回の前半5回と後半5回を比較</div>
+          </article>
+        </div>
+
+        <div class="panel">
+          <div class="section-title">
+            <div>
+              <h2>1か月前との差分ランキング</h2>
+              <p>直近7日平均と、30日前あたりの7日平均を比べます。</p>
+            </div>
+          </div>
+          <div class="analysis-list" id="month-delta-list"></div>
+        </div>
+
+        <div class="panel">
+          <div class="section-title">
+            <div>
+              <h2>最近速くなった作業ランキング</h2>
+              <p>その作業が出た直近10回で、後半がどれだけ短くなったかを見ます。</p>
+            </div>
+          </div>
+          <div class="analysis-list" id="recent-speed-list"></div>
+        </div>
+
+        <div class="panel">
+          <div class="section-title">
+            <div>
+              <h2>作業別の平均時間</h2>
+              <p>平均・回数・最短・最長を確認できます。</p>
+            </div>
+          </div>
+          <div class="analysis-list" id="average-list"></div>
+        </div>
+      </section>
+
+      <section class="view" id="view-notes">
+        <div class="notes-layout">
+          <form class="panel" id="note-form" onsubmit="return false;">
+            <div class="section-title">
+              <div>
+                <h2>改善メモを追加</h2>
+                <p>気づきやナレッジを作業タグごとに貯めます。</p>
+              </div>
+            </div>
+            <input type="hidden" id="note-id">
+            <div class="form-group">
+              <label for="note-date">日付</label>
+              <input type="date" id="note-date">
+            </div>
+            <div class="form-group">
+              <label for="note-kind">種類</label>
+              <select id="note-kind">
+                <option value="改善">改善</option>
+                <option value="気づき">気づき</option>
+                <option value="ナレッジ">ナレッジ</option>
+                <option value="次に試す">次に試す</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="note-tag">作業内容タグ</label>
+              <select id="note-tag"></select>
+            </div>
+            <div class="form-group">
+              <label for="new-tag">新しいタグを追加</label>
+              <div class="input-group">
+                <input type="text" id="new-tag" placeholder="例: 棚番確認">
+                <button class="btn-secondary" id="add-tag-btn" type="button">追加</button>
+              </div>
+            </div>
+            <div class="form-group">
+              <label for="note-body">本文</label>
+              <textarea id="note-body" placeholder="例: 先に配送順で箱を並べると迷いにくい"></textarea>
+            </div>
+            <div class="button-row">
+              <button class="btn-primary" id="save-note-btn" type="button">メモを保存</button>
+              <button class="btn-secondary" id="clear-note-btn" type="button">入力をクリア</button>
+            </div>
+          </form>
+
+          <div class="panel">
+            <div class="section-title">
+              <div>
+                <h2>メモ一覧</h2>
+                <p>種類・作業タグ・キーワードで絞り込めます。</p>
+              </div>
+            </div>
+            <div class="filters">
+              <select id="filter-kind">
+                <option value="">種類すべて</option>
+                <option value="改善">改善</option>
+                <option value="気づき">気づき</option>
+                <option value="ナレッジ">ナレッジ</option>
+                <option value="次に試す">次に試す</option>
+              </select>
+              <select id="filter-tag"></select>
+              <input type="search" id="filter-text" placeholder="キーワード検索">
+            </div>
+            <div id="notes-list"></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="view" id="view-storage">
+        <div class="storage-grid">
+          <div class="panel">
+            <div class="section-title">
+              <div>
+                <h2>バックアップ</h2>
+                <p>JSONはアプリを復元するための保存ファイルです。</p>
+              </div>
+            </div>
+            <div class="button-row">
+              <button class="btn-primary" id="export-json-btn" type="button">JSONを書き出し</button>
+              <label class="btn-secondary" style="display:inline-flex;align-items:center;min-height:46px;border-radius:7px;padding:.72rem 1rem;font-weight:700;cursor:pointer;">
+                JSONを読み込み
+                <input class="sr-only" id="import-json-input" type="file" accept="application/json,.json">
+              </label>
+            </div>
+          </div>
+          <div class="panel">
+            <div class="section-title">
+              <div>
+                <h2>表データ</h2>
+                <p>CSVはExcelやスプレッドシートで見るための表です。</p>
+              </div>
+            </div>
+            <div class="button-row">
+              <button class="btn-primary" id="export-reports-csv-btn" type="button">日報CSV</button>
+              <button class="btn-primary" id="export-work-csv-btn" type="button">作業ログCSV</button>
+              <button class="btn-secondary" id="export-notes-csv-btn" type="button">改善メモCSV</button>
+            </div>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="section-title">
+            <div>
+              <h2>Googleスプレッドシート連携</h2>
+              <p>次の段階で、reports / work_logs / notes の3シートへ送信します。</p>
+            </div>
+          </div>
+          <div class="empty">現在は準備中です。今のバージョンでは端末内保存、JSONバックアップ、CSV書き出しまで使えます。</div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <template id="delivery-template">
+    <div class="dynamic-item delivery-item">
+      <button class="remove-btn" type="button" aria-label="この項目を削除">x</button>
+      <div class="form-group">
+        <label>納品時間 (開始〜完了)</label>
+        <div class="input-group">
+          <input type="time" class="delivery-start">
+          <button class="now-btn btn-secondary" type="button">今</button>
+          <input type="time" class="delivery-end">
+          <button class="now-btn btn-secondary" type="button">今</button>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>納品場所</label>
+        <select class="delivery-location"></select>
+        <input type="text" class="delivery-other" placeholder="具体的な納品場所を入力" style="display:none;margin-top:.5rem">
+      </div>
+    </div>
+  </template>
+
+  <template id="internal-template">
+    <div class="dynamic-item internal-item">
+      <button class="remove-btn" type="button" aria-label="この項目を削除">x</button>
+      <div class="form-group">
+        <label>作業時間 (開始〜完了)</label>
+        <div class="input-group">
+          <input type="time" class="work-start">
+          <button class="now-btn btn-secondary" type="button">今</button>
+          <input type="time" class="work-end">
+          <button class="now-btn btn-secondary" type="button">今</button>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>作業内容</label>
+        <div class="check-grid work-tags"></div>
+      </div>
+    </div>
+  </template>
+
+  <template id="route-template">
+    <div class="dynamic-item route-item">
+      <button class="remove-btn" type="button" aria-label="この項目を削除">x</button>
+      <div class="input-group">
+        <strong class="route-number" style="width:2rem;color:var(--muted);"></strong>
+        <select class="route-location"></select>
+      </div>
+      <input type="text" class="route-other" placeholder="具体的な配送先を入力" style="display:none;margin-top:.5rem">
+    </div>
+  </template>
+
+  <div id="print-sheet" aria-hidden="true">
+    <div class="ps-title">業務日報</div>
+    <table class="ps-grid ps-top">
+      <tr>
+        <td style="width:56%;">
+          <table class="ps-grid" style="border:0;">
+            <tr><td class="ps-tight" style="width:22mm;"><span class="ps-small">日付</span></td><td class="ps-tight"><span id="ps-date"></span></td></tr>
+            <tr><td class="ps-tight"><span class="ps-small">製造部</span></td><td class="ps-tight"><span class="ps-small">作業者：</span><span id="ps-user"></span></td></tr>
+          </table>
+        </td>
+        <td style="width:44%;">
+          <table class="ps-grid" style="border:0;">
+            <tr>
+              <td class="ps-center ps-stamp-head">検<br>印</td>
+              <td class="ps-stamp-cell"></td>
+              <td class="ps-stamp-cell"></td>
+              <td class="ps-stamp-cell"></td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+    <table class="ps-table">
+      <thead><tr><th style="width:40%;">納品時間</th><th>納品先</th></tr></thead>
+      <tbody id="ps-delivery-body" class="ps-delivery-rows"></tbody>
+    </table>
+    <table class="ps-grid" style="margin-top:3mm;">
+      <tr>
+        <td class="ps-tight" style="width:34%;"><span class="ps-inline-label ps-small">出発</span><span id="ps-departure"></span></td>
+        <td class="ps-tight" style="width:33%;"><span class="ps-inline-label ps-small">帰社</span><span id="ps-return"></span></td>
+        <td class="ps-tight" style="width:33%;"><span class="ps-inline-label ps-small">距離</span><span id="ps-mileage"></span> km</td>
+      </tr>
+      <tr><td class="ps-tight" colspan="3"><span class="ps-inline-label ps-small">翌日ルート</span><span id="ps-next-route"></span></td></tr>
+    </table>
+    <table class="ps-table" style="margin-top:3mm;">
+      <thead><tr><th style="width:40%;">作業時間</th><th>業務内容</th></tr></thead>
+      <tbody id="ps-internal-body" class="ps-internal-rows"></tbody>
+    </table>
+    <table class="ps-grid" style="margin-top:3mm;">
+      <tr><td class="ps-tight"><div class="ps-center ps-small" style="margin-bottom:1.6mm;">特記事項</div><div id="ps-notes"></div></td></tr>
+    </table>
+  </div>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const STORAGE_KEY = 'delivery-report:v3:store';
+      const DEFAULT_LOCATIONS = ['エバーメイト','ハマ','ヤマノセンター','協和ゴム','三宝','山野美容','資生堂','寿硝子','渋谷美容','深井硝子','大成化学','東京硝子','藤本科学','日本美容','牧口ゴム','明方堂','その他'];
+      const DEFAULT_TAGS = ['工場成形品回収','工場形品片付け','指定納期品片付け','在庫品片付け','次回配送準備','荷受け','ノズルチップ付け','トリガー検査','瓶体検査','内職準備','内職配送','内職回収品片付け','その他'];
+
+      const $ = (selector, root = document) => root.querySelector(selector);
+      const $$ = (selector, root = document) => Array.from(root.querySelectorAll(selector));
+      const today = () => {
+        const d = new Date();
+        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      };
+      const nowTime = () => {
+        const d = new Date();
+        return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+      };
+      const uid = () => `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+      const minutesBetween = (start, end) => {
+        if (!start || !end) return null;
+        const [sh, sm] = start.split(':').map(Number);
+        const [eh, em] = end.split(':').map(Number);
+        if ([sh, sm, eh, em].some(Number.isNaN)) return null;
+        let s = sh * 60 + sm;
+        let e = eh * 60 + em;
+        if (e < s) e += 24 * 60;
+        return e - s;
+      };
+      const formatMinutes = (mins) => {
+        if (mins === null || mins === undefined || Number.isNaN(mins)) return '-';
+        const sign = mins < 0 ? '-' : '';
+        const abs = Math.round(Math.abs(mins));
+        const h = Math.floor(abs / 60);
+        const m = abs % 60;
+        return h ? `${sign}${h}時間${m}分` : `${sign}${m}分`;
+      };
+      const parseDate = (value) => {
+        const [y, m, d] = value.split('-').map(Number);
+        return new Date(y, m - 1, d);
+      };
+      const daysDiff = (a, b) => Math.round((parseDate(a) - parseDate(b)) / 86400000);
+      const avg = (arr) => arr.length ? arr.reduce((sum, n) => sum + n, 0) / arr.length : null;
+      const escapeCsv = (value) => `"${String(value == null ? '' : value).split('"').join('""')}"`;
+      const uniqueTags = (customTags) => {
+        const tags = [];
+        (customTags || []).concat(DEFAULT_TAGS).forEach((tag) => {
+          if (tags.indexOf(tag) === -1) tags.push(tag);
+        });
+        return tags;
+      };
+      const objectValues = (obj) => Object.keys(obj || {}).map((key) => obj[key]);
+
+      let store = loadStore();
+      let currentKey = '';
+      let isRestoring = false;
+
+      function loadStore() {
+        try {
+          const raw = localStorage.getItem(STORAGE_KEY);
+          if (!raw) return { reports: {}, notes: [], tags: DEFAULT_TAGS.slice(), lastSavedAt: '', lastSubmittedAt: '' };
+          const parsed = JSON.parse(raw);
+          return {
+            reports: parsed.reports || {},
+            notes: parsed.notes || [],
+            tags: uniqueTags(parsed.tags || []),
+            lastSavedAt: parsed.lastSavedAt || '',
+            lastSubmittedAt: parsed.lastSubmittedAt || ''
+          };
+        } catch (_) {
+          return { reports: {}, notes: [], tags: DEFAULT_TAGS.slice(), lastSavedAt: '', lastSubmittedAt: '' };
+        }
+      }
+
+      function persist(statusText = '下書き保存済み') {
+        store.lastSavedAt = new Date().toISOString();
+        try {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(store));
+          $('#save-status').textContent = `${statusText} ${nowTime()}`;
+        } catch (_) {
+          $('#save-status').textContent = '保存できませんでした';
+        }
+      }
+
+      function reportKey(data) {
+        return `${data.date || today()}::${(data.userName || '未入力').trim() || '未入力'}`;
+      }
+
+      function populateSelect(select, options) {
+        select.innerHTML = '';
+        options.forEach((option) => {
+          const el = document.createElement('option');
+          el.value = option;
+          el.textContent = option;
+          select.appendChild(el);
+        });
+      }
+
+      function setLocationValue(select, other, value, otherValue = '') {
+        if (DEFAULT_LOCATIONS.includes(value)) {
+          select.value = value;
+        } else if (value) {
+          select.value = 'その他';
+          otherValue = otherValue || value;
+        }
+        other.value = otherValue || '';
+        other.style.display = select.value === 'その他' ? 'block' : 'none';
+      }
+
+      function renderWorkTagChecks(box, selected = []) {
+        box.innerHTML = '';
+        store.tags.forEach((tag) => {
+          const id = `tag-${uid()}`;
+          const label = document.createElement('label');
+          label.className = 'check-item';
+          label.innerHTML = `<input type="checkbox" class="work-tag-check" value="${tag}"><span>${tag}</span>`;
+          const input = $('input', label);
+          input.id = id;
+          input.checked = selected.includes(tag);
+          box.appendChild(label);
+        });
+      }
+
+      function createDelivery(data = {}) {
+        const node = $('#delivery-template').content.cloneNode(true);
+        const item = $('.delivery-item', node);
+        populateSelect($('.delivery-location', item), DEFAULT_LOCATIONS);
+        $('.delivery-start', item).value = data.start || '';
+        $('.delivery-end', item).value = data.end || '';
+        setLocationValue($('.delivery-location', item), $('.delivery-other', item), data.location || DEFAULT_LOCATIONS[0], data.other || '');
+        $('#delivery-list').appendChild(node);
+      }
+
+      function createInternal(data = {}) {
+        const node = $('#internal-template').content.cloneNode(true);
+        const item = $('.internal-item', node);
+        $('.work-start', item).value = data.start || '';
+        $('.work-end', item).value = data.end || '';
+        renderWorkTagChecks($('.work-tags', item), data.tags || []);
+        $('#internal-work-list').appendChild(node);
+      }
+
+      function createRoute(data = {}) {
+        const node = $('#route-template').content.cloneNode(true);
+        const item = $('.route-item', node);
+        populateSelect($('.route-location', item), DEFAULT_LOCATIONS);
+        setLocationValue($('.route-location', item), $('.route-other', item), data.location || DEFAULT_LOCATIONS[0], data.other || '');
+        $('#next-route-list').appendChild(node);
+        updateRouteNumbers();
+      }
+
+      function updateRouteNumbers() {
+        $$('.route-item').forEach((item, index) => {
+          $('.route-number', item).textContent = `${index + 1}.`;
+        });
+      }
+
+      function collectReport() {
+        return {
+          version: 3,
+          id: currentKey || '',
+          updatedAt: new Date().toISOString(),
+          submittedAt: store.reports[currentKey] ? (store.reports[currentKey].submittedAt || '') : '',
+          date: $('#report-date').value || today(),
+          userName: $('#user-name').value.trim(),
+          departureTime: $('#departure-time').value,
+          returnTime: $('#return-time').value,
+          mileage: $('#mileage').value,
+          specialNotes: $('#special-notes').value.trim(),
+          deliveries: $$('.delivery-item').map((item) => ({
+            start: $('.delivery-start', item).value,
+            end: $('.delivery-end', item).value,
+            location: $('.delivery-location', item).value,
+            other: $('.delivery-other', item).value.trim()
+          })),
+          internalWorks: $$('.internal-item').map((item) => ({
+            start: $('.work-start', item).value,
+            end: $('.work-end', item).value,
+            tags: $$('.work-tag-check:checked', item).map((input) => input.value)
+          })),
+          nextRoutes: $$('.route-item').map((item) => ({
+            location: $('.route-location', item).value,
+            other: $('.route-other', item).value.trim()
+          }))
+        };
+      }
+
+      function saveDraft(silent = false) {
+        if (isRestoring) return;
+        const data = collectReport();
+        const nextKey = reportKey(data);
+        if (currentKey && currentKey !== nextKey && store.reports[currentKey] && !store.reports[currentKey].submittedAt) {
+          delete store.reports[currentKey];
+        }
+        currentKey = nextKey;
+        data.id = currentKey;
+        store.reports[currentKey] = data;
+        persist(silent ? '下書き保存済み' : '下書き保存済み');
+        renderAnalysis();
+      }
+
+      function resetReportForm(dateValue = today()) {
+        $('#report-date').value = dateValue;
+        $('#user-name').value = '';
+        $('#departure-time').value = '';
+        $('#return-time').value = '';
+        $('#mileage').value = '';
+        $('#special-notes').value = '';
+        $('#delivery-list').innerHTML = '';
+        $('#internal-work-list').innerHTML = '';
+        $('#next-route-list').innerHTML = '';
+        createDelivery();
+        createInternal();
+        createRoute();
+      }
+
+      function loadReportForDate(dateValue) {
+        isRestoring = true;
+        const report = objectValues(store.reports)
+          .filter((item) => item.date === dateValue)
+          .sort((a, b) => String(b.updatedAt || '').localeCompare(String(a.updatedAt || '')))[0];
+        if (!report) {
+          currentKey = '';
+          resetReportForm(dateValue);
+          $('#send-status').textContent = '未送信';
+          isRestoring = false;
+          persist('新しい日報');
+          return;
+        }
+        currentKey = report.id || reportKey(report);
+        $('#report-date').value = report.date || dateValue;
+        $('#user-name').value = report.userName || '';
+        $('#departure-time').value = report.departureTime || '';
+        $('#return-time').value = report.returnTime || '';
+        $('#mileage').value = report.mileage || '';
+        $('#special-notes').value = report.specialNotes || '';
+        $('#delivery-list').innerHTML = '';
+        $('#internal-work-list').innerHTML = '';
+        $('#next-route-list').innerHTML = '';
+        ((report.deliveries && report.deliveries.length) ? report.deliveries : [{}]).forEach(createDelivery);
+        ((report.internalWorks && report.internalWorks.length) ? report.internalWorks : [{}]).forEach(createInternal);
+        ((report.nextRoutes && report.nextRoutes.length) ? report.nextRoutes : [{}]).forEach(createRoute);
+        $('#send-status').textContent = report.submittedAt ? '送信済み' : '未送信';
+        $('#save-status').textContent = '保存データを読み込みました';
+        isRestoring = false;
+      }
+
+      function workLogs() {
+        const logs = [];
+        objectValues(store.reports).forEach((report) => {
+          (report.internalWorks || []).forEach((work) => {
+            const duration = minutesBetween(work.start, work.end);
+            if (!duration) return;
+            (work.tags || []).forEach((tag) => {
+              logs.push({
+                reportId: report.id,
+                date: report.date,
+                userName: report.userName,
+                tag,
+                start: work.start,
+                end: work.end,
+                minutes: duration
+              });
+            });
+          });
+        });
+        return logs.sort((a, b) => a.date.localeCompare(b.date));
+      }
+
+      function logsByTag() {
+        const map = new Map();
+        workLogs().forEach((log) => {
+          if (!map.has(log.tag)) map.set(log.tag, []);
+          map.get(log.tag).push(log);
+        });
+        return map;
+      }
+
+      function relatedNotes(tag) {
+        return store.notes
+          .filter((note) => note.tag === tag)
+          .sort((a, b) => String(b.date).localeCompare(String(a.date)))
+          .slice(0, 3);
+      }
+
+      function makeAnalysisCard({ tag, title, detail, tone = '', value = '' }) {
+        const notes = relatedNotes(tag);
+        const noteHtml = notes.length
+          ? `<div class="tag-line" style="margin-top:.55rem;">${notes.map((note) => `<span class="tag note-kind">${note.kind}</span>`).join('')}</div><p>${notes[0].body}</p>`
+          : '<p>関連メモはまだありません。</p>';
+        const card = document.createElement('article');
+        card.className = `analysis-card ${tone}`;
+        card.innerHTML = `
+          <div>
+            <h3>${title}</h3>
+            <p>${detail}</p>
+            ${noteHtml}
+          </div>
+          <div class="button-row">
+            <strong>${value}</strong>
+            <button class="btn-ghost analysis-note-btn" type="button" data-tag="${tag}">メモを書く</button>
+          </div>
+        `;
+        return card;
+      }
+
+      function renderAnalysis() {
+        const grouped = logsByTag();
+        const averages = [];
+        grouped.forEach((logs, tag) => {
+          const values = logs.map((log) => log.minutes);
+          averages.push({ tag, avg: avg(values), count: values.length, min: Math.min.apply(null, values), max: Math.max.apply(null, values), logs });
+        });
+        averages.sort((a, b) => b.avg - a.avg);
+        $('#metric-average-count').textContent = `${averages.length}件`;
+
+        const todayValue = $('#report-date').value || today();
+        const monthDeltas = averages.map((item) => {
+          const recent = item.logs.filter((log) => {
+            const diff = daysDiff(todayValue, log.date);
+            return diff >= 0 && diff <= 6;
+          }).map((log) => log.minutes);
+          const past = item.logs.filter((log) => {
+            const diff = daysDiff(todayValue, log.date);
+            return diff >= 27 && diff <= 33;
+          }).map((log) => log.minutes);
+          return Object.assign({}, item, { recentAvg: avg(recent), pastAvg: avg(past) });
+        }).filter((item) => item.recentAvg !== null && item.pastAvg !== null)
+          .map((item) => Object.assign({}, item, { delta: item.recentAvg - item.pastAvg }))
+          .sort((a, b) => a.delta - b.delta);
+
+        const recentSpeed = averages.map((item) => {
+          const last10 = item.logs.slice().sort((a, b) => a.date.localeCompare(b.date)).slice(-10);
+          if (last10.length < 6) return null;
+          const split = Math.floor(last10.length / 2);
+          const before = avg(last10.slice(0, split).map((log) => log.minutes));
+          const after = avg(last10.slice(split).map((log) => log.minutes));
+          return Object.assign({}, item, { before, after, delta: after - before });
+        }).filter(Boolean).sort((a, b) => a.delta - b.delta);
+
+        $('#metric-month-best').textContent = monthDeltas.length ? `${monthDeltas[0].tag} ${formatMinutes(monthDeltas[0].delta)}` : '-';
+        $('#metric-recent-best').textContent = recentSpeed.length ? `${recentSpeed[0].tag} ${formatMinutes(recentSpeed[0].delta)}` : '-';
+
+        renderList('#month-delta-list', monthDeltas, (item) => makeAnalysisCard({
+          tag: item.tag,
+          title: item.tag,
+          detail: `直近7日平均 ${formatMinutes(item.recentAvg)} / 30日前あたり ${formatMinutes(item.pastAvg)}`,
+          value: `${item.delta <= 0 ? '短縮' : '増加'} ${formatMinutes(item.delta)}`,
+          tone: item.delta <= 0 ? 'good' : 'warn'
+        }), '比較できる記録がまだ足りません。30日前あたりの記録が増えると表示されます。');
+
+        renderList('#recent-speed-list', recentSpeed, (item) => makeAnalysisCard({
+          tag: item.tag,
+          title: item.tag,
+          detail: `前半平均 ${formatMinutes(item.before)} / 後半平均 ${formatMinutes(item.after)}`,
+          value: `${item.delta <= 0 ? '短縮' : '増加'} ${formatMinutes(item.delta)}`,
+          tone: item.delta <= 0 ? 'good' : 'warn'
+        }), '直近10回に近い記録が増えると表示されます。');
+
+        renderList('#average-list', averages, (item) => makeAnalysisCard({
+          tag: item.tag,
+          title: item.tag,
+          detail: `回数 ${item.count}回 / 最短 ${formatMinutes(item.min)} / 最長 ${formatMinutes(item.max)}`,
+          value: `平均 ${formatMinutes(item.avg)}`
+        }), '作業時間の記録がまだありません。');
+      }
+
+      function renderList(selector, items, renderer, emptyText) {
+        const root = $(selector);
+        root.innerHTML = '';
+        if (!items.length) {
+          root.innerHTML = `<div class="empty">${emptyText}</div>`;
+          return;
+        }
+        items.forEach((item) => root.appendChild(renderer(item)));
+      }
+
+      function renderTagSelects() {
+        ['#note-tag', '#filter-tag'].forEach((selector) => {
+          const select = $(selector);
+          const current = select.value;
+          select.innerHTML = selector === '#filter-tag' ? '<option value="">タグすべて</option>' : '';
+          store.tags.forEach((tag) => {
+            const option = document.createElement('option');
+            option.value = tag;
+            option.textContent = tag;
+            select.appendChild(option);
+          });
+          if (Array.prototype.slice.call(select.options).some((option) => option.value === current)) select.value = current;
+        });
+        $$('.work-tags').forEach((box) => {
+          const selected = $$('.work-tag-check:checked', box).map((input) => input.value);
+          renderWorkTagChecks(box, selected);
+        });
+      }
+
+      function clearNoteForm() {
+        $('#note-id').value = '';
+        $('#note-date').value = $('#report-date').value || today();
+        $('#note-kind').value = '改善';
+        $('#note-tag').value = store.tags[0] || '';
+        $('#note-body').value = '';
+      }
+
+      function saveNote() {
+        const body = $('#note-body').value.trim();
+        if (!body) {
+          alert('メモ本文を入力してください。');
+          return;
+        }
+        const note = {
+          id: $('#note-id').value || uid(),
+          date: $('#note-date').value || today(),
+          kind: $('#note-kind').value,
+          tag: $('#note-tag').value,
+          body,
+          updatedAt: new Date().toISOString()
+        };
+        const index = store.notes.findIndex((item) => item.id === note.id);
+        if (index >= 0) store.notes[index] = note;
+        else store.notes.unshift(note);
+        persist('改善メモ保存済み');
+        clearNoteForm();
+        renderNotes();
+        renderAnalysis();
+      }
+
+      function renderNotes() {
+        const kind = $('#filter-kind').value;
+        const tag = $('#filter-tag').value;
+        const text = $('#filter-text').value.trim();
+        const notes = store.notes.filter((note) => {
+          if (kind && note.kind !== kind) return false;
+          if (tag && note.tag !== tag) return false;
+          if (text && !`${note.body} ${note.tag} ${note.kind}`.includes(text)) return false;
+          return true;
+        }).sort((a, b) => `${b.date}${b.updatedAt}`.localeCompare(`${a.date}${a.updatedAt}`));
+        const root = $('#notes-list');
+        root.innerHTML = '';
+        if (!notes.length) {
+          root.innerHTML = '<div class="empty">改善メモはまだありません。</div>';
+          return;
+        }
+        notes.forEach((note) => {
+          const card = document.createElement('article');
+          card.className = 'note-card';
+          card.innerHTML = `
+            <div class="note-head">
+              <span>${note.date}</span>
+              <span class="tag-line"><span class="tag note-kind">${note.kind}</span><span class="tag">${note.tag}</span></span>
+            </div>
+            <p>${note.body}</p>
+            <div class="button-row" style="margin-top:.65rem;">
+              <button class="btn-ghost edit-note-btn" type="button" data-id="${note.id}">編集</button>
+              <button class="btn-secondary delete-note-btn" type="button" data-id="${note.id}">削除</button>
+            </div>
+          `;
+          root.appendChild(card);
+        });
+      }
+
+      function addTag(value) {
+        const tag = value.trim();
+        if (!tag) return;
+        if (!store.tags.includes(tag)) store.tags.push(tag);
+        store.tags.sort((a, b) => a.localeCompare(b, 'ja'));
+        renderTagSelects();
+        $('#note-tag').value = tag;
+        $('#new-tag').value = '';
+        persist('タグ追加済み');
+        saveDraft(true);
+      }
+
+      function openNoteWithTag(tag, kind = '次に試す') {
+        clearNoteForm();
+        $('#note-kind').value = kind;
+        $('#note-tag').value = tag;
+        switchTab('notes');
+        $('#note-body').focus();
+      }
+
+      function buildPrintSheet() {
+        const data = collectReport();
+        $('#ps-date').textContent = data.date || '';
+        $('#ps-user').textContent = data.userName || '';
+        $('#ps-departure').textContent = data.departureTime || '';
+        $('#ps-return').textContent = data.returnTime || '';
+        $('#ps-mileage').textContent = data.mileage || '';
+        $('#ps-notes').textContent = data.specialNotes || '';
+        const routeText = data.nextRoutes.map((route) => route.location === 'その他' && route.other ? route.other : route.location).filter(Boolean).join(' / ');
+        $('#ps-next-route').textContent = routeText;
+
+        const deliveryBody = $('#ps-delivery-body');
+        deliveryBody.innerHTML = '';
+        data.deliveries.forEach((delivery) => {
+          const place = delivery.location === 'その他' && delivery.other ? delivery.other : delivery.location;
+          const tr = document.createElement('tr');
+          tr.innerHTML = `<td>${delivery.start || delivery.end ? `${delivery.start} 〜 ${delivery.end}` : '　'}</td><td>${place || '　'}</td>`;
+          deliveryBody.appendChild(tr);
+        });
+        while (deliveryBody.children.length < 6) deliveryBody.insertAdjacentHTML('beforeend', '<tr><td>　</td><td>　</td></tr>');
+        while (deliveryBody.children.length > 6) deliveryBody.removeChild(deliveryBody.lastElementChild);
+
+        const internalBody = $('#ps-internal-body');
+        internalBody.innerHTML = '';
+        data.internalWorks.forEach((work) => {
+          const tr = document.createElement('tr');
+          tr.innerHTML = `<td>${work.start || work.end ? `${work.start} 〜 ${work.end}` : '　'}</td><td>${work.tags.join('、') || '　'}</td>`;
+          internalBody.appendChild(tr);
+        });
+        while (internalBody.children.length < 6) internalBody.insertAdjacentHTML('beforeend', '<tr><td>　</td><td>　</td></tr>');
+      }
+
+      function download(filename, text, type) {
+        const blob = new Blob([text], { type });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        a.click();
+        URL.revokeObjectURL(url);
+      }
+
+      function exportWorkCsv() {
+        const rows = [['日付','作業者','作業タグ','開始時間','終了時間','作業時間(分)']];
+        workLogs().forEach((log) => rows.push([log.date, log.userName, log.tag, log.start, log.end, log.minutes]));
+        download(`work_logs_${today()}.csv`, rows.map((row) => row.map(escapeCsv).join(',')).join('\n'), 'text/csv;charset=utf-8');
+      }
+
+      function exportReportsCsv() {
+        const rows = [['日付','作業者','出発時間','帰社時間','走行距離(km)','翌日配送ルート','特記事項','送信状態']];
+        objectValues(store.reports)
+          .sort((a, b) => String(a.date).localeCompare(String(b.date)))
+          .forEach((report) => {
+            const routes = (report.nextRoutes || [])
+              .map((route) => route.location === 'その他' && route.other ? route.other : route.location)
+              .filter(Boolean)
+              .join(' / ');
+            rows.push([
+              report.date,
+              report.userName,
+              report.departureTime,
+              report.returnTime,
+              report.mileage,
+              routes,
+              report.specialNotes,
+              report.submittedAt ? '送信済み' : '未送信'
+            ]);
+          });
+        download(`reports_${today()}.csv`, rows.map((row) => row.map(escapeCsv).join(',')).join('\n'), 'text/csv;charset=utf-8');
+      }
+
+      function exportNotesCsv() {
+        const rows = [['日付','種類','作業タグ','本文']];
+        store.notes.forEach((note) => rows.push([note.date, note.kind, note.tag, note.body]));
+        download(`notes_${today()}.csv`, rows.map((row) => row.map(escapeCsv).join(',')).join('\n'), 'text/csv;charset=utf-8');
+      }
+
+      function switchTab(name) {
+        $$('.tab-button').forEach((button) => button.classList.toggle('active', button.dataset.tab === name));
+        $$('.view').forEach((view) => view.classList.toggle('active', view.id === `view-${name}`));
+        if (name === 'analysis') renderAnalysis();
+        if (name === 'notes') renderNotes();
+      }
+
+      $$('.tab-button').forEach((button) => button.addEventListener('click', () => switchTab(button.dataset.tab)));
+      $('#report-date').addEventListener('change', () => loadReportForDate($('#report-date').value || today()));
+      $('#report-form').addEventListener('input', () => saveDraft(true));
+      $('#report-form').addEventListener('change', () => saveDraft(true));
+      $('#note-form').addEventListener('input', () => {});
+      ['#filter-kind', '#filter-tag', '#filter-text'].forEach((selector) => $(selector).addEventListener('input', renderNotes));
+
+      document.body.addEventListener('click', (event) => {
+        const target = event.target;
+        if (target.classList.contains('now-btn')) {
+          const prev = target.previousElementSibling;
+          const next = target.nextElementSibling;
+          if (prev && prev.type === 'time') prev.value = nowTime();
+          else if (next && next.type === 'time') next.value = nowTime();
+          saveDraft();
+        }
+        if (target.closest('.remove-btn')) {
+          const item = target.closest('.dynamic-item');
+          item.remove();
+          updateRouteNumbers();
+          saveDraft();
+        }
+        if (target.classList.contains('analysis-note-btn')) openNoteWithTag(target.dataset.tag);
+        if (target.classList.contains('edit-note-btn')) {
+          const note = store.notes.find((item) => item.id === target.dataset.id);
+          if (!note) return;
+          $('#note-id').value = note.id;
+          $('#note-date').value = note.date;
+          $('#note-kind').value = note.kind;
+          $('#note-tag').value = note.tag;
+          $('#note-body').value = note.body;
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+        if (target.classList.contains('delete-note-btn')) {
+          if (!confirm('この改善メモを削除しますか？')) return;
+          store.notes = store.notes.filter((item) => item.id !== target.dataset.id);
+          persist('改善メモ削除済み');
+          renderNotes();
+          renderAnalysis();
+        }
+      });
+
+      $('#delivery-list').addEventListener('change', (event) => {
+        if (event.target.classList.contains('delivery-location')) {
+          const item = event.target.closest('.delivery-item');
+          $('.delivery-other', item).style.display = event.target.value === 'その他' ? 'block' : 'none';
+        }
+      });
+      $('#next-route-list').addEventListener('change', (event) => {
+        if (event.target.classList.contains('route-location')) {
+          const item = event.target.closest('.route-item');
+          $('.route-other', item).style.display = event.target.value === 'その他' ? 'block' : 'none';
+        }
+      });
+
+      $('#add-delivery-btn').addEventListener('click', () => { createDelivery(); saveDraft(); });
+      $('#add-internal-work-btn').addEventListener('click', () => { createInternal(); saveDraft(); });
+      $('#add-next-route-btn').addEventListener('click', () => { createRoute(); saveDraft(); });
+      $('#quick-note-from-report').addEventListener('click', () => openNoteWithTag($('#note-tag').value || store.tags[0] || '', '改善'));
+      $('#add-tag-btn').addEventListener('click', () => addTag($('#new-tag').value));
+      $('#save-note-btn').addEventListener('click', saveNote);
+      $('#clear-note-btn').addEventListener('click', clearNoteForm);
+      $('#save-now-btn').addEventListener('click', () => saveDraft());
+      $('#submit-report-btn').addEventListener('click', () => {
+        saveDraft();
+        store.reports[currentKey].submittedAt = new Date().toISOString();
+        store.lastSubmittedAt = store.reports[currentKey].submittedAt;
+        persist('送信準備データ保存済み');
+        $('#send-status').textContent = '送信済み（連携準備中）';
+        alert('このバージョンでは端末内に送信用データを保存しました。Googleスプレッドシート連携は次の段階で接続します。');
+      });
+      $('#reset-day-btn').addEventListener('click', () => {
+        const dateValue = $('#report-date').value || today();
+        if (!confirm(`${dateValue} の入力をリセットしますか？`)) return;
+        if (currentKey) delete store.reports[currentKey];
+        currentKey = '';
+        resetReportForm(dateValue);
+        persist('この日の入力をリセットしました');
+        renderAnalysis();
+      });
+      $('#print-btn').addEventListener('click', () => {
+        saveDraft();
+        buildPrintSheet();
+        window.print();
+      });
+      $('#export-json-btn').addEventListener('click', () => {
+        saveDraft(true);
+        download(`delivery_report_backup_${today()}.json`, JSON.stringify(store, null, 2), 'application/json');
+      });
+      $('#import-json-input').addEventListener('change', (event) => {
+        const file = event.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = () => {
+          try {
+            const imported = JSON.parse(reader.result);
+            if (!imported || typeof imported !== 'object') throw new Error('invalid');
+            store = {
+              reports: imported.reports || {},
+              notes: imported.notes || [],
+              tags: uniqueTags(imported.tags || []),
+              lastSavedAt: imported.lastSavedAt || '',
+              lastSubmittedAt: imported.lastSubmittedAt || ''
+            };
+            persist('JSON読み込み済み');
+            renderTagSelects();
+            loadReportForDate($('#report-date').value || today());
+            renderNotes();
+            renderAnalysis();
+          } catch (_) {
+            alert('JSONを読み込めませんでした。ファイルを確認してください。');
+          } finally {
+            event.target.value = '';
+          }
+        };
+        reader.onerror = () => {
+          alert('JSONを読み込めませんでした。ファイルを確認してください。');
+          event.target.value = '';
+        };
+        reader.readAsText(file);
+      });
+      $('#export-reports-csv-btn').addEventListener('click', exportReportsCsv);
+      $('#export-work-csv-btn').addEventListener('click', exportWorkCsv);
+      $('#export-notes-csv-btn').addEventListener('click', exportNotesCsv);
+      window.addEventListener('beforeunload', () => saveDraft(true));
+
+      if ('serviceWorker' in navigator && location.protocol !== 'file:') {
+        navigator.serviceWorker.register('./sw.js').catch(() => {});
+      }
+
+      $('#report-date').value = today();
+      $('#note-date').value = today();
+      renderTagSelects();
+      clearNoteForm();
+      loadReportForDate(today());
+      renderNotes();
+      renderAnalysis();
+    });
+  </script>
+</body>
+</html>
