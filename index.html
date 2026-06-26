@@ -93,14 +93,6 @@
     .checkbox-group{display:flex;align-items:center;gap:.5rem}
     .checkbox-group input[type="checkbox"]{min-height:auto;height:20px;width:20px}
     .checkbox-group label{font-weight:normal;margin-bottom:0}
-    .settings-box{
-      border:1px solid var(--border-color);border-radius:6px;
-      padding:1rem;margin-top:1rem;background:#fdfdfd
-    }
-    .settings-box summary{font-weight:700;cursor:pointer}
-    .settings-box textarea{margin-top:.75rem;min-height:150px}
-    .settings-actions{display:flex;gap:.75rem;margin-top:.75rem;flex-wrap:wrap}
-    .settings-actions button{flex:1 1 180px}
     .help-text{color:var(--secondary-color);font-size:.9rem;margin-top:.5rem}
     .other-detail{
       display:none;margin-top:.75rem;padding:.75rem;
@@ -136,6 +128,45 @@
       gap:.5rem;margin-bottom:.75rem
     }
     .receiving-other-wrap{display:none;margin-top:.5rem}
+    .item-summary{
+      display:none;align-items:center;justify-content:space-between;gap:.75rem;
+      padding-right:2.3rem
+    }
+    .item-summary-text{font-weight:700;line-height:1.4}
+    .item-summary-sub{display:block;color:var(--secondary-color);font-size:.9rem;font-weight:400;margin-top:.15rem}
+    .dynamic-item.is-collapsed{padding:.85rem 1rem}
+    .dynamic-item.is-collapsed .item-summary{display:flex}
+    .dynamic-item.is-collapsed .item-body{display:none}
+    .item-actions{display:flex;justify-content:flex-end;gap:.75rem;margin-top:1rem}
+    .item-actions button,.edit-item-btn{padding:.55rem .9rem;min-height:38px}
+    .route-picker{
+      border:1px solid var(--border-color);border-radius:6px;
+      padding:1rem;background:#fdfdfd
+    }
+    .route-picker summary{font-weight:700;cursor:pointer}
+    .route-order-list{display:grid;gap:.5rem;margin-top:.75rem}
+    .route-order-row{
+      display:grid;grid-template-columns:42px minmax(0,1fr);gap:.65rem;align-items:center;
+      width:100%;text-align:left;padding:.75rem;border:1px solid var(--border-color);
+      border-radius:6px;background:#fff;color:var(--text-color);font-weight:700
+    }
+    .route-order-row:active{transform:translateY(1px)}
+    .route-order-number{
+      display:flex;align-items:center;justify-content:center;
+      width:32px;height:32px;border-radius:50%;border:1px solid var(--border-color);
+      color:var(--secondary-color);background:#f8f9fa;font-weight:700
+    }
+    .route-order-row.is-selected{border-color:var(--primary-color);background:#f8fbff}
+    .route-order-row.is-selected .route-order-number{color:#fff;background:var(--primary-color);border-color:var(--primary-color)}
+    .route-other-input{grid-column:1 / -1;display:none}
+    .route-summary-box{
+      display:none;align-items:center;justify-content:space-between;gap:.75rem;
+      border:1px solid var(--border-color);border-radius:6px;padding:.85rem 1rem;background:#fdfdfd
+    }
+    .route-summary-text{font-weight:700;line-height:1.45}
+    .route-summary-sub{display:block;color:var(--secondary-color);font-size:.9rem;font-weight:400;margin-top:.15rem}
+    .route-field.is-collapsed .route-picker{display:none}
+    .route-field.is-collapsed .route-summary-box{display:flex}
 
     /* --- Save controls (screen) --- */
     .save-panel{
@@ -164,40 +195,42 @@
     #print-sheet{display:none}
 
     @media print{
-      @page{ size:A4; margin:10mm; }   /* 余白を詰めてA4に収める */
+      @page{ size:A4; margin:7mm; }   /* A4 1枚に収めるため余白を圧縮 */
 
       /* 画面UIを隠し、紙レイアウトだけ表示 */
       #app{display:none !important}
       #print-sheet{display:block !important}
 
-      body{background:#fff !important;color:#000;font-size:9.5pt; -webkit-print-color-adjust:exact; print-color-adjust:exact;}
+      body{background:#fff !important;color:#000;font-size:8.5pt;line-height:1.22; -webkit-print-color-adjust:exact; print-color-adjust:exact;}
 
-      .ps-wrap{width:100%}
-      .ps-title{text-align:center;font-weight:700;font-size:15pt;margin-bottom:6mm}
+      .ps-wrap{width:100%;max-height:283mm;overflow:hidden}
+      .ps-title{text-align:center;font-weight:700;font-size:13pt;margin-bottom:3mm}
 
       .ps-grid,.ps-table{width:100%;border-collapse:collapse;table-layout:fixed}
       .ps-grid th,.ps-grid td,.ps-table th,.ps-table td{
-        border:1px solid #000; padding:2.2mm 1.8mm; vertical-align:middle;
+        border:1px solid #000; padding:1.25mm 1.3mm; vertical-align:middle;
+        overflow-wrap:anywhere; word-break:break-word;
       }
       .ps-table th{text-align:center}
 
-      .ps-small{font-size:9pt}
+      .ps-small{font-size:8pt}
       .ps-center{text-align:center}
-      .ps-tight{padding:1.6mm 1.6mm !important; line-height:1.25}
-      .ps-inline-label{font-weight:700; margin-right:1.6mm; display:inline-block}
+      .ps-tight{padding:1mm 1.2mm !important; line-height:1.18}
+      .ps-inline-label{font-weight:700; margin-right:1.2mm; display:inline-block}
       .ps-compact{border-spacing:0}
 
       /* 検印ブロック：均一サイズに固定 */
-      .ps-stamp-head{width:12mm; font-weight:700}
-      .ps-stamp-cell{width:16mm; height:16mm}
-      .ps-stamp-box{width:16mm; height:16mm}
+      .ps-stamp-head{width:10mm; font-weight:700}
+      .ps-stamp-cell{width:13mm; height:12mm}
+      .ps-stamp-box{width:13mm; height:12mm}
 
       /* 上段ブロック詰め気味 */
-      .ps-top{margin-bottom:4mm}
+      .ps-top{margin-bottom:2mm}
 
       /* 行高を詰めてA4化 */
-      .ps-delivery-rows td{height:8mm}   /* 納品 6行に変更 */
-      .ps-internal-rows td{height:8mm}   /* 社内 6行程度 */
+      .ps-delivery-rows td{height:6.2mm}
+      .ps-internal-rows td{height:6.4mm}
+      #ps-notes{min-height:12mm;max-height:22mm;overflow:hidden;white-space:pre-wrap}
       h1,h2,h3,p{margin:0}
 
       /* --- 要求① 翌日配送ルートの縦幅を圧縮 --- */
@@ -210,7 +243,7 @@
 
       /* --- 要求② 出発／帰社／距離を横並び（ラベル＋値） --- */
       .ps-trip-row td{                 /* 1行でコンパクトに見せる */
-        padding:1.6mm 1.6mm !important;
+        padding:1mm 1.2mm !important;
       }
     }
   </style>
@@ -276,23 +309,27 @@
 
           <div id="internal-work-list"></div>
           <button type="button" id="add-internal-work-btn" class="add-btn">[+] 社内業務を追加</button>
-          <details class="settings-box">
-            <summary>作業項目を編集</summary>
-            <p class="help-text">1行に1つずつ入力してください。保存すると、作業内容の選択肢に反映されます。</p>
-            <textarea id="work-item-editor" aria-label="作業項目の編集"></textarea>
-            <div class="settings-actions">
-              <button type="button" id="save-work-items-btn" class="btn">作業項目を保存</button>
-              <button type="button" id="reset-work-items-btn" class="btn-secondary">初期項目に戻す</button>
-            </div>
-          </details>
         </section>
 
         <section>
           <h2>申し送り事項</h2>
-          <div class="form-group">
+          <div class="form-group route-field" id="next-route-field">
             <label for="next-day-route">翌日配送ルート</label>
-            <div id="next-day-route-list"></div>
-            <button type="button" id="add-next-route-btn" class="add-btn btn-secondary" style="margin-top:0;">[+] 配送先を追加</button>
+            <div class="route-summary-box">
+              <div>
+                <span class="route-summary-text">ルート未選択</span>
+                <span class="route-summary-sub">入力済み</span>
+              </div>
+              <button type="button" id="edit-route-btn" class="btn-secondary">編集</button>
+            </div>
+            <details class="route-picker" open>
+              <summary>配送先一覧から順番を選択</summary>
+              <p class="help-text">回る順番に配送先をタップしてください。もう一度タップすると解除できます。</p>
+              <div id="next-day-route-list" class="route-order-list"></div>
+              <div class="item-actions">
+                <button type="button" id="complete-route-btn" class="btn-secondary">入力完了</button>
+              </div>
+            </details>
           </div>
           <div class="form-group">
             <label for="special-notes">特記事項</label>
@@ -324,19 +361,31 @@
       <button type="button" class="remove-btn" aria-label="この項目を削除">
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
       </button>
-      <div class="form-group">
-        <label>納品時間 (開始〜完了)</label>
-        <div class="input-group">
-          <input type="time" class="delivery-start-time">
-          <button type="button" class="now-btn btn-secondary" aria-label="現在時刻を入力">現在</button>
-          <input type="time" class="delivery-end-time">
-          <button type="button" class="now-btn btn-secondary" aria-label="現在時刻を入力">現在</button>
+      <div class="item-summary">
+        <div>
+          <span class="item-summary-text">納品先未入力</span>
+          <span class="item-summary-sub">入力済み</span>
         </div>
+        <button type="button" class="edit-item-btn btn-secondary">編集</button>
       </div>
-      <div class="form-group">
-        <label>納品場所</label>
-        <select class="delivery-location"></select>
-        <input type="text" class="delivery-location-other" placeholder="具体的な納品場所を入力" style="display:none;margin-top:.5rem">
+      <div class="item-body">
+        <div class="form-group">
+          <label>納品時間 (開始〜完了)</label>
+          <div class="input-group">
+            <input type="time" class="delivery-start-time">
+            <button type="button" class="now-btn btn-secondary" aria-label="現在時刻を入力">現在</button>
+            <input type="time" class="delivery-end-time">
+            <button type="button" class="now-btn btn-secondary" aria-label="現在時刻を入力">現在</button>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>納品場所</label>
+          <select class="delivery-location"></select>
+          <input type="text" class="delivery-location-other" placeholder="具体的な納品場所を入力" style="display:none;margin-top:.5rem">
+        </div>
+        <div class="item-actions">
+          <button type="button" class="complete-item-btn btn-secondary">入力完了</button>
+        </div>
       </div>
     </div>
   </template>
@@ -346,59 +395,58 @@
       <button type="button" class="remove-btn" aria-label="この項目を削除">
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
       </button>
-      <div class="form-group">
-        <label>作業時間 (開始〜完了)</label>
-        <div class="input-group">
-          <input type="time" class="work-start-time">
-          <button type="button" class="now-btn btn-secondary" aria-label="現在時刻を入力">現在</button>
-          <input type="time" class="work-end-time">
-          <button type="button" class="now-btn btn-secondary" aria-label="現在時刻を入力">現在</button>
+      <div class="item-summary">
+        <div>
+          <span class="item-summary-text">作業内容未入力</span>
+          <span class="item-summary-sub">入力済み</span>
         </div>
+        <button type="button" class="edit-item-btn btn-secondary">編集</button>
       </div>
-      <div class="form-group">
-        <label>作業内容 (複数選択可)</label>
-        <div class="work-description-options"></div>
-        <div class="cleanup-detail">
-          <label>片付けの内容（複数選択可）</label>
-          <div class="cleanup-options"></div>
-          <div class="cleanup-other-wrap">
-            <label>その他の片付け内容（任意）</label>
-            <input type="text" class="cleanup-other" placeholder="例: 棚整理、不要物の整理など">
+      <div class="item-body">
+        <div class="form-group">
+          <label>作業時間 (開始〜完了)</label>
+          <div class="input-group">
+            <input type="time" class="work-start-time">
+            <button type="button" class="now-btn btn-secondary" aria-label="現在時刻を入力">現在</button>
+            <input type="time" class="work-end-time">
+            <button type="button" class="now-btn btn-secondary" aria-label="現在時刻を入力">現在</button>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>作業内容 (複数選択可)</label>
+          <div class="work-description-options"></div>
+          <div class="cleanup-detail">
+            <label>片付けの内容（複数選択可）</label>
+            <div class="cleanup-options"></div>
+            <div class="cleanup-other-wrap">
+              <label>その他の片付け内容（任意）</label>
+              <input type="text" class="cleanup-other" placeholder="例: 棚整理、不要物の整理など">
+              <p class="help-text">空欄のままでも保存できます。</p>
+            </div>
+          </div>
+          <div class="inspection-detail">
+            <label>検査の内容（複数選択可）</label>
+            <div class="inspection-options"></div>
+          </div>
+          <div class="receiving-detail">
+            <label>荷受けの内容（複数選択可）</label>
+            <div class="receiving-options"></div>
+            <div class="receiving-other-wrap">
+              <label>その他の荷受け内容（任意）</label>
+              <input type="text" class="receiving-other" placeholder="例: 資材、外注戻りなど">
+              <p class="help-text">空欄のままでも保存できます。</p>
+            </div>
+          </div>
+          <div class="other-detail">
+            <label>その他の内容（任意）</label>
+            <input type="text" class="work-description-other" placeholder="例: 倉庫整理、緊急対応など">
             <p class="help-text">空欄のままでも保存できます。</p>
           </div>
         </div>
-        <div class="inspection-detail">
-          <label>検査の内容（複数選択可）</label>
-          <div class="inspection-options"></div>
-        </div>
-        <div class="receiving-detail">
-          <label>荷受けの内容（複数選択可）</label>
-          <div class="receiving-options"></div>
-          <div class="receiving-other-wrap">
-            <label>その他の荷受け内容（任意）</label>
-            <input type="text" class="receiving-other" placeholder="例: 資材、外注戻りなど">
-            <p class="help-text">空欄のままでも保存できます。</p>
-          </div>
-        </div>
-        <div class="other-detail">
-          <label>その他の内容（任意）</label>
-          <input type="text" class="work-description-other" placeholder="例: 倉庫整理、緊急対応など">
-          <p class="help-text">空欄のままでも保存できます。</p>
+        <div class="item-actions">
+          <button type="button" class="complete-item-btn btn-secondary">入力完了</button>
         </div>
       </div>
-    </div>
-  </template>
-
-  <template id="next-route-item-template">
-    <div class="dynamic-item" style="padding:1rem;">
-      <div style="display:flex;gap:.5rem;align-items:center;">
-        <span style="font-weight:bold;font-size:1.2rem;color:var(--secondary-color);"></span>
-        <select class="delivery-location" style="flex-grow:1;"></select>
-        <button type="button" class="remove-btn" aria-label="この項目を削除" style="position:static;top:auto;right:auto;">
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
-        </button>
-      </div>
-      <input type="text" class="next-route-other" placeholder="具体的なルートを入力" style="display:none;width:100%;margin-top:.5rem">
     </div>
   </template>
 
@@ -505,7 +553,6 @@
         '瓶体検査':'瓶体'
       };
       const STORAGE_PREFIX = 'delivery-report:v2:';
-      const WORK_ITEMS_STORAGE_KEY = `${STORAGE_PREFIX}work-items`;
 
       // --- Element Refs ---
       const reportForm = document.getElementById('reportForm');
@@ -523,13 +570,11 @@
       const internalWorkList = document.getElementById('internal-work-list');
       const addInternalWorkBtn = document.getElementById('add-internal-work-btn');
       const internalWorkTemplate = document.getElementById('internal-work-item-template');
-      const workItemEditor = document.getElementById('work-item-editor');
-      const saveWorkItemsBtn = document.getElementById('save-work-items-btn');
-      const resetWorkItemsBtn = document.getElementById('reset-work-items-btn');
 
       const nextDayRouteList = document.getElementById('next-day-route-list');
-      const addNextRouteBtn = document.getElementById('add-next-route-btn');
-      const nextRouteTemplate = document.getElementById('next-route-item-template');
+      const nextRouteField = document.getElementById('next-route-field');
+      const completeRouteBtn = document.getElementById('complete-route-btn');
+      const editRouteBtn = document.getElementById('edit-route-btn');
       const departureTime = document.getElementById('departure-time');
       const returnTime = document.getElementById('return-time');
       const mileage = document.getElementById('mileage');
@@ -539,7 +584,6 @@
       let isRestoring = false;
       let suppressSaveUntilEdit = false;
       let uidCounter = 0;
-      let internalWorkItems = DEFAULT_INTERNAL_WORK_ITEMS.slice();
 
       // --- Helpers ---
       const formatTime = (d)=>`${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
@@ -590,18 +634,6 @@
         if(!seen['検査']) cleaned.push('検査');
         cleaned.push('その他');
         return cleaned;
-      };
-      const loadWorkItems = () => {
-        const raw = safeGet(WORK_ITEMS_STORAGE_KEY);
-        if(!raw) return DEFAULT_INTERNAL_WORK_ITEMS.slice();
-        try{
-          const parsed = JSON.parse(raw);
-          if(Array.isArray(parsed) && parsed.length) return normalizeWorkItems(parsed);
-        }catch(_){}
-        return DEFAULT_INTERNAL_WORK_ITEMS.slice();
-      };
-      const syncWorkItemEditor = () => {
-        workItemEditor.value = internalWorkItems.join('\n');
       };
       const setOtherWorkInputVisible = (item, visible) => {
         const detail = item ? item.querySelector('.other-detail') : null;
@@ -755,6 +787,54 @@
         });
         return labels;
       };
+      const timeRangeText = (start, end) => {
+        if(start && end) return `${start} 〜 ${end}`;
+        if(start) return `${start} 〜`;
+        if(end) return `〜 ${end}`;
+        return '時間未入力';
+      };
+      const getDeliverySummary = (item) => {
+        const start = item.querySelector('.delivery-start-time')?.value || '';
+        const end = item.querySelector('.delivery-end-time')?.value || '';
+        const select = item.querySelector('.delivery-location');
+        const other = item.querySelector('.delivery-location-other');
+        let place = select ? select.value : '';
+        if(place === 'その他' && other && other.value.trim()) place = other.value.trim();
+        return {
+          title: place || '納品先未入力',
+          sub: timeRangeText(start, end)
+        };
+      };
+      const getInternalWorkSummary = (item) => {
+        const work = collectInternalWorkFromItem(item);
+        const labels = formatInternalWorkLabels(work);
+        return {
+          title: labels.join('、') || '作業内容未入力',
+          sub: timeRangeText(work.start, work.end)
+        };
+      };
+      const setItemSummary = (item, summary) => {
+        const title = item.querySelector('.item-summary-text');
+        const sub = item.querySelector('.item-summary-sub');
+        if(title){ title.textContent = summary.title; }
+        if(sub){ sub.textContent = summary.sub; }
+      };
+      const updateItemSummary = (item) => {
+        if(!item || !item.parentElement) return;
+        if(item.parentElement.id === 'delivery-list'){
+          setItemSummary(item, getDeliverySummary(item));
+        }
+        if(item.parentElement.id === 'internal-work-list'){
+          setItemSummary(item, getInternalWorkSummary(item));
+        }
+      };
+      const collapseItem = (item) => {
+        updateItemSummary(item);
+        item.classList.add('is-collapsed');
+      };
+      const expandItem = (item) => {
+        item.classList.remove('is-collapsed');
+      };
       const collectCurrentInternalWorks = () => (
         Array.from(internalWorkList.querySelectorAll('.dynamic-item')).map(collectInternalWorkFromItem)
       );
@@ -762,26 +842,6 @@
         internalWorkList.innerHTML = '';
         (works && works.length ? works : [{}]).forEach(createInternalWorkItem);
       };
-      const saveWorkItemSettings = () => {
-        const previousWorks = collectCurrentInternalWorks();
-        internalWorkItems = normalizeWorkItems(workItemEditor.value.split(/\n/));
-        safeSet(WORK_ITEMS_STORAGE_KEY, JSON.stringify(internalWorkItems));
-        syncWorkItemEditor();
-        rebuildInternalWorkList(previousWorks);
-        setSaveStatus('作業項目を保存しました');
-        scheduleSave();
-      };
-      const resetWorkItemSettings = () => {
-        if(!window.confirm('作業項目を初期状態に戻しますか？')) return;
-        const previousWorks = collectCurrentInternalWorks();
-        internalWorkItems = DEFAULT_INTERNAL_WORK_ITEMS.slice();
-        safeRemove(WORK_ITEMS_STORAGE_KEY);
-        syncWorkItemEditor();
-        rebuildInternalWorkList(previousWorks);
-        setSaveStatus('作業項目を初期状態に戻しました');
-        scheduleSave();
-      };
-
       // --- Dynamic creators ---
       const createDeliveryItem = (data = {}) => {
         const content = deliveryTemplate.content.cloneNode(true);
@@ -791,6 +851,8 @@
         content.querySelector('.delivery-start-time').value = data.start || '';
         content.querySelector('.delivery-end-time').value = data.end || '';
         setSelectValue(select, data.location || DELIVERY_LOCATIONS[0], other, data.other || '');
+        const item = content.querySelector('.dynamic-item');
+        setItemSummary(item, getDeliverySummary(item));
         deliveryList.appendChild(content);
       };
       const createInternalWorkItem = (data = {}) => {
@@ -802,7 +864,7 @@
         const receivingBox = content.querySelector('.receiving-options');
         const uid = `${Date.now()}-${++uidCounter}`;
         const selectedItems = normalizedData.items;
-        const itemOptions = normalizeWorkItems(internalWorkItems.concat(selectedItems));
+        const itemOptions = normalizeWorkItems(DEFAULT_INTERNAL_WORK_ITEMS.concat(selectedItems));
         itemOptions.forEach((txt,i)=>{
           const g=document.createElement('div'); g.className='checkbox-group';
           const cb=document.createElement('input'); cb.type='checkbox'; cb.id=`work-${uid}-${i}`; cb.value=txt; cb.className='work-description-checkbox';
@@ -849,22 +911,116 @@
         const receivingOtherWrap = content.querySelector('.receiving-other-wrap');
         if(receivingOtherWrap){ receivingOtherWrap.style.display = normalizedData.receivingItems.includes('その他') ? 'block' : 'none'; }
         content.querySelector('.receiving-other').value = normalizedData.receivingOther;
+        const item = content.querySelector('.dynamic-item');
+        setItemSummary(item, getInternalWorkSummary(item));
         internalWorkList.appendChild(content);
       };
-      const createNextRouteItem = (data = {}) => {
-        const content = nextRouteTemplate.content.cloneNode(true);
-        const select = content.querySelector('.delivery-location');
-        const other = content.querySelector('.next-route-other');
-        populateSelect(select, DELIVERY_LOCATIONS);
-        setSelectValue(select, data.location || DELIVERY_LOCATIONS[0], other, data.other || '');
-        updateRouteNumbers();
-        nextDayRouteList.appendChild(content);
-        updateRouteNumbers();
-      };
-      const updateRouteNumbers = () => {
-        nextDayRouteList.querySelectorAll('.dynamic-item').forEach((item, idx)=>{
-          item.querySelector('span').textContent = `${idx+1}.`;
+      const renderRouteOrderList = (routes = []) => {
+        nextDayRouteList.innerHTML = '';
+        const selectedRoutes = Array.isArray(routes) ? routes : [];
+        DELIVERY_LOCATIONS.forEach(location => {
+          const row = document.createElement('button');
+          row.type = 'button';
+          row.className = 'route-order-row';
+          row.dataset.location = location;
+          row.dataset.order = '';
+
+          const number = document.createElement('span');
+          number.className = 'route-order-number';
+          number.textContent = '-';
+
+          const label = document.createElement('span');
+          label.textContent = location;
+
+          const matchedIndex = selectedRoutes.findIndex(route => route.location === location);
+          if(matchedIndex >= 0){
+            row.dataset.order = String(matchedIndex + 1);
+            number.textContent = String(matchedIndex + 1);
+            row.classList.add('is-selected');
+          }
+
+          row.appendChild(number);
+          row.appendChild(label);
+
+          if(location === 'その他'){
+            const otherInput = document.createElement('input');
+            otherInput.type = 'text';
+            otherInput.className = 'route-other-input';
+            otherInput.placeholder = 'その他の配送先を入力';
+            const otherRoute = selectedRoutes.find(route => route.location === 'その他');
+            otherInput.value = otherRoute && otherRoute.other ? otherRoute.other : '';
+            otherInput.style.display = row.dataset.order ? 'block' : 'none';
+            row.appendChild(otherInput);
+          }
+
+          nextDayRouteList.appendChild(row);
         });
+        updateRouteSummary();
+      };
+      const collectNextRoutes = () => (
+        Array.from(nextDayRouteList.querySelectorAll('.route-order-row'))
+          .map(row => {
+            const order = Number(row.dataset.order || 0);
+            return {
+              order,
+              location: row.dataset.location || '',
+              other: row.querySelector('.route-other-input')?.value.trim() || ''
+            };
+          })
+          .filter(route => route.order > 0)
+          .sort((a, b) => a.order - b.order)
+          .map(route => ({ location: route.location, other: route.other }))
+      );
+      const routeLabel = (route) => {
+        if(route.location === 'その他' && route.other) return route.other;
+        return route.location || '';
+      };
+      const updateRouteSummary = () => {
+        const routes = collectNextRoutes();
+        const text = nextRouteField.querySelector('.route-summary-text');
+        const sub = nextRouteField.querySelector('.route-summary-sub');
+        if(text){
+          text.textContent = routes.length
+            ? routes.map((route, idx) => `${idx + 1}. ${routeLabel(route)}`).join(' / ')
+            : 'ルート未選択';
+        }
+        if(sub){
+          sub.textContent = routes.length ? `${routes.length}件選択済み` : '入力済み';
+        }
+      };
+      const collapseRouteField = () => {
+        updateRouteSummary();
+        nextRouteField.classList.add('is-collapsed');
+      };
+      const expandRouteField = () => {
+        nextRouteField.classList.remove('is-collapsed');
+      };
+      const updateRouteOrderRows = () => {
+        const rows = Array.from(nextDayRouteList.querySelectorAll('.route-order-row'));
+        const selectedRows = rows
+          .filter(row => Number(row.dataset.order || 0) > 0)
+          .sort((a, b) => Number(a.dataset.order) - Number(b.dataset.order));
+        selectedRows.forEach((row, idx) => { row.dataset.order = String(idx + 1); });
+        rows.forEach(row => {
+          const order = row.dataset.order || '';
+          const number = row.querySelector('.route-order-number');
+          row.classList.toggle('is-selected', Boolean(order));
+          if(number){ number.textContent = order || '-'; }
+          const otherInput = row.querySelector('.route-other-input');
+          if(otherInput){ otherInput.style.display = order ? 'block' : 'none'; }
+        });
+        updateRouteSummary();
+      };
+      const toggleRouteOrder = (row) => {
+        if(row.dataset.order){
+          row.dataset.order = '';
+          const otherInput = row.querySelector('.route-other-input');
+          if(otherInput){ otherInput.value = ''; }
+        }else{
+          const currentMax = Math.max(0, ...Array.from(nextDayRouteList.querySelectorAll('.route-order-row')).map(item => Number(item.dataset.order || 0)));
+          row.dataset.order = String(currentMax + 1);
+        }
+        updateRouteOrderRows();
       };
       const resetFormForDate = (date) => {
         reportDate.value = date || formatDateInput(new Date());
@@ -875,10 +1031,9 @@
         specialNotes.value = '';
         deliveryList.innerHTML = '';
         internalWorkList.innerHTML = '';
-        nextDayRouteList.innerHTML = '';
         createDeliveryItem();
         createInternalWorkItem();
-        createNextRouteItem();
+        renderRouteOrderList();
       };
       const collectReportData = (dateOverride) => ({
         version: 2,
@@ -896,10 +1051,7 @@
           other: item.querySelector('.delivery-location-other')?.value.trim() || ''
         })),
         internalWorks: Array.from(internalWorkList.querySelectorAll('.dynamic-item')).map(collectInternalWorkFromItem),
-        nextRoutes: Array.from(nextDayRouteList.querySelectorAll('.dynamic-item')).map(item => ({
-          location: item.querySelector('.delivery-location')?.value || '',
-          other: item.querySelector('.next-route-other')?.value.trim() || ''
-        }))
+        nextRoutes: collectNextRoutes()
       });
       const saveReport = (dateOverride, options = {}) => {
         const date = dateOverride || reportDate.value || currentStorageDate;
@@ -944,10 +1096,9 @@
 
         deliveryList.innerHTML = '';
         internalWorkList.innerHTML = '';
-        nextDayRouteList.innerHTML = '';
         (data.deliveries?.length ? data.deliveries : [{}]).forEach(createDeliveryItem);
         (data.internalWorks?.length ? data.internalWorks : [{}]).forEach(createInternalWorkItem);
-        (data.nextRoutes?.length ? data.nextRoutes : [{}]).forEach(createNextRouteItem);
+        renderRouteOrderList(data.nextRoutes || []);
 
         currentStorageDate = data.date || date;
         setSaveStatus(`${currentStorageDate} の保存データを読み込みました`);
@@ -982,11 +1133,21 @@
             if(next && next.type==='time'){ next.value=formatTime(new Date()); }
           }
           scheduleSave();
+          updateItemSummary(e.target.closest('.dynamic-item'));
+        }
+        const completeButton = e.target.closest('.complete-item-btn');
+        if(completeButton){
+          const item = completeButton.closest('.dynamic-item');
+          if(item){ collapseItem(item); }
+        }
+        const editButton = e.target.closest('.edit-item-btn');
+        if(editButton){
+          const item = editButton.closest('.dynamic-item');
+          if(item){ expandItem(item); }
         }
         if(e.target.closest('.remove-btn')){
           const item=e.target.closest('.dynamic-item');
-          const isRoute=item.parentElement.id==='next-day-route-list';
-          if(item){ item.remove(); if(isRoute) updateRouteNumbers(); scheduleSave(); }
+          if(item){ item.remove(); scheduleSave(); }
         }
       });
 
@@ -997,6 +1158,7 @@
             other.style.display = e.target.value==='その他' ? 'block' : 'none';
           }
         }
+        updateItemSummary(e.target.closest('.dynamic-item'));
       });
       internalWorkList.addEventListener('change',(e)=>{
         if(e.target.classList.contains('work-description-checkbox') && e.target.value==='その他'){
@@ -1017,29 +1179,34 @@
         if(e.target.classList.contains('receiving-checkbox') && e.target.value==='その他'){
           setReceivingOtherVisible(e.target.closest('.dynamic-item'), e.target.checked);
         }
+        updateItemSummary(e.target.closest('.dynamic-item'));
       });
-      nextDayRouteList.addEventListener('change',(e)=>{
-        if(e.target.classList.contains('delivery-location')){
-          const other=e.target.closest('.dynamic-item').querySelector('.next-route-other');
-          if(other){ other.style.display = e.target.value==='その他' ? 'block' : 'none'; }
+      nextDayRouteList.addEventListener('click',(e)=>{
+        if(e.target.classList.contains('route-other-input')) return;
+        const row = e.target.closest('.route-order-row');
+        if(row){
+          toggleRouteOrder(row);
+          scheduleSave();
         }
       });
+      nextDayRouteList.addEventListener('input', () => { updateRouteSummary(); scheduleSave(); });
+      completeRouteBtn.addEventListener('click', collapseRouteField);
+      editRouteBtn.addEventListener('click', expandRouteField);
 
       addDeliveryBtn.addEventListener('click', () => { createDeliveryItem(); scheduleSave(); });
       addInternalWorkBtn.addEventListener('click', () => { createInternalWorkItem(); scheduleSave(); });
-      addNextRouteBtn.addEventListener('click', () => { createNextRouteItem(); scheduleSave(); });
       reportForm.addEventListener('input', (e) => {
         if(e.target === reportDate) return;
+        updateItemSummary(e.target.closest('.dynamic-item'));
         scheduleSave();
       });
       reportForm.addEventListener('change', (e) => {
         if(e.target === reportDate){ changeReportDate(); return; }
+        updateItemSummary(e.target.closest('.dynamic-item'));
         scheduleSave();
       });
       saveDataBtn.addEventListener('click', () => { suppressSaveUntilEdit = false; saveReport(undefined, { force:true }); });
       resetDayBtn.addEventListener('click', resetCurrentDay);
-      saveWorkItemsBtn.addEventListener('click', saveWorkItemSettings);
-      resetWorkItemsBtn.addEventListener('click', resetWorkItemSettings);
       window.addEventListener('beforeunload', () => saveReport(currentStorageDate || reportDate.value, { silent:true }));
 
       // ---- 印刷用：紙レイアウトへデータ流し込み ----
@@ -1054,13 +1221,9 @@
         document.getElementById('ps-mileage').textContent   = (document.getElementById('mileage').value || '').toString();
 
         // 翌日ルート（1行化＋スラッシュ区切り）
-        const routeItems = Array.from(document.querySelectorAll('#next-day-route-list .dynamic-item'));
-        const routeTexts = routeItems.map(item=>{
-          const sel=item.querySelector('.delivery-location');
-          const other=item.querySelector('.next-route-other');
-          const v=sel?sel.value:'';
-          if(v==='その他' && other && other.value.trim()) return other.value.trim();
-          return v || '';
+        const routeTexts = collectNextRoutes().map(route => {
+          if(route.location === 'その他' && route.other) return route.other;
+          return route.location || '';
         }).filter(Boolean);
         document.getElementById('ps-next-route').textContent = routeTexts.join(' / ');
 
@@ -1089,13 +1252,30 @@
         const inBody=document.getElementById('ps-internal-body');
         inBody.innerHTML='';
         const workItems=Array.from(document.querySelectorAll('#internal-work-list .dynamic-item'));
-        workItems.forEach(item=>{
+        const printWorkRows = workItems.map(item=>{
           const work = collectInternalWorkFromItem(item);
           const s=work.start || '';
           const e=work.end || '';
           const picks=formatInternalWorkLabels(work);
+          return {
+            time: (s||e)?`${s} 〜 ${e}`:'　',
+            label: picks.join('、')||'　'
+          };
+        });
+        const maxInternalRows = 8;
+        if(printWorkRows.length > maxInternalRows){
+          const visibleRows = printWorkRows.slice(0, maxInternalRows - 1);
+          const restRows = printWorkRows.slice(maxInternalRows - 1);
+          visibleRows.push({
+            time: 'ほか',
+            label: restRows.map(row => row.label).join('、')
+          });
+          printWorkRows.length = 0;
+          visibleRows.forEach(row => printWorkRows.push(row));
+        }
+        printWorkRows.forEach(row=>{
           const tr=document.createElement('tr');
-          tr.innerHTML=`<td>${(s||e)?`${s} 〜 ${e}`:'　'}</td><td>${picks.join('、')||'　'}</td>`;
+          tr.innerHTML=`<td>${row.time}</td><td>${row.label}</td>`;
           inBody.appendChild(tr);
         });
         while(inBody.children.length < 6){ const tr=document.createElement('tr'); tr.innerHTML=`<td>　</td><td>　</td>`; inBody.appendChild(tr); }
@@ -1109,10 +1289,9 @@
         window.print();
         setSaveStatus('印刷用データを作成しました。保存後は必要に応じてリセットできます');
       });
+      window.addEventListener('beforeprint', buildPrintSheet);
 
       // --- Initial State ---
-      internalWorkItems = loadWorkItems();
-      syncWorkItemEditor();
       currentStorageDate = formatDateInput(new Date());
       loadReport(currentStorageDate);
     });
