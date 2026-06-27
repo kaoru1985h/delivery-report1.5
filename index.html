@@ -76,6 +76,13 @@
     .button-row button{flex:0 0 auto}
     .filters{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:.75rem;margin-bottom:1rem}
     .empty{border:1px dashed var(--border-color);border-radius:8px;padding:1rem;color:var(--secondary-color);background:#fff}
+    .report-card{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:.75rem;align-items:center}
+    .report-card button{padding:.55rem .9rem;min-height:38px}
+    .report-detail{margin-top:1rem}
+    .report-detail-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:.75rem;margin-top:.75rem}
+    .report-detail-block{border:1px solid var(--border-color);border-radius:8px;background:#fff;padding:.85rem}
+    .report-detail-block h3{font-size:1rem;margin-bottom:.45rem}
+    .report-detail-block p{margin:.25rem 0;color:var(--secondary-color)}
 
     /* --- Form Elements --- */
     .form-group{margin-bottom:1.2rem}
@@ -413,6 +420,11 @@
           </article>
         </div>
         <div class="panel">
+          <h2>保存済み日報一覧</h2>
+          <div class="analysis-list" id="saved-report-list"></div>
+          <div class="report-detail" id="saved-report-detail"></div>
+        </div>
+        <div class="panel">
           <h2>作業別の平均時間</h2>
           <div class="analysis-list" id="analysis-work-list"></div>
         </div>
@@ -736,6 +748,12 @@
       const setSaveStatus = (text)=>{ saveStatus.textContent = text; };
       const todayText = () => formatDateInput(new Date());
       const escapeCsv = (value) => `"${String(value == null ? '' : value).split('"').join('""')}"`;
+      const escapeHtml = (value) => String(value == null ? '' : value)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
       const downloadText = (filename, text, type) => {
         const blob = new Blob([text], { type });
         const url = URL.createObjectURL(blob);
@@ -1058,12 +1076,93 @@
         });
         return logs;
       };
+      const deliveryPlaceLabel = (delivery) => {
+        if(!delivery) return '';
+        if(delivery.location === 'その他' && delivery.other) return delivery.other;
+        return delivery.location || '';
+      };
+      const reportSummaryText = (report) => {
+        const deliveryCount = (report.deliveries || []).filter(delivery => deliveryPlaceLabel(delivery)).length;
+        const workCount = (report.internalWorks || []).filter(work => formatInternalWorkLabels(work).length).length;
+        const routeCount = (report.nextRoutes || []).filter(route => routeLabel(route)).length;
+        return `納品 ${deliveryCount}件 / 社内 ${workCount}件 / 翌日ルート ${routeCount}件`;
+      };
+      const renderReportDetail = (report) => {
+        const root = $('#saved-report-detail');
+        if(!root) return;
+        if(!report){
+          root.innerHTML = '';
+          return;
+        }
+        const deliveries = (report.deliveries || [])
+          .map(delivery => {
+            const time = timeRangeText(delivery.start || '', delivery.end || '');
+            const place = deliveryPlaceLabel(delivery) || '納品先未入力';
+            return `<p>${escapeHtml(time)}　${escapeHtml(place)}</p>`;
+          })
+          .join('') || '<p>納品記録はありません。</p>';
+        const works = (report.internalWorks || [])
+          .map(work => {
+            const time = timeRangeText(work.start || '', work.end || '');
+            const labels = formatInternalWorkLabels(work).join('、') || '作業内容未入力';
+            return `<p>${escapeHtml(time)}　${escapeHtml(labels)}</p>`;
+          })
+          .join('') || '<p>社内業務の記録はありません。</p>';
+        const routes = (report.nextRoutes || []).map(routeLabel).filter(Boolean);
+        root.innerHTML = `
+          <article class="info-card">
+            <strong>${escapeHtml(report.date || '日付未入力')} ${escapeHtml(report.userName || '')}</strong>
+            <p>出発 ${escapeHtml(report.departureTime || '-')} / 帰社 ${escapeHtml(report.returnTime || '-')} / 距離 ${escapeHtml(report.mileage || '-')} km</p>
+            <div class="report-detail-grid">
+              <div class="report-detail-block">
+                <h3>配送業務</h3>
+                ${deliveries}
+              </div>
+              <div class="report-detail-block">
+                <h3>社内業務</h3>
+                ${works}
+              </div>
+              <div class="report-detail-block">
+                <h3>申し送り</h3>
+                <p><strong>翌日ルート</strong></p>
+                <p>${escapeHtml(routes.join(' / ') || '未選択')}</p>
+                <p><strong>特記事項</strong></p>
+                <p>${escapeHtml(report.specialNotes || 'なし')}</p>
+              </div>
+            </div>
+          </article>
+        `;
+      };
+      const renderSavedReportList = (reports) => {
+        const list = $('#saved-report-list');
+        if(!list) return;
+        list.innerHTML = '';
+        if(!reports.length){
+          list.innerHTML = '<div class="empty">保存済み日報はまだありません。</div>';
+          renderReportDetail(null);
+          return;
+        }
+        reports.slice().sort((a, b) => String(b.date || '').localeCompare(String(a.date || ''))).forEach((report, index) => {
+          const card = document.createElement('article');
+          card.className = 'info-card report-card';
+          card.innerHTML = `
+            <div>
+              <strong>${escapeHtml(report.date || '日付未入力')} ${escapeHtml(report.userName || '')}</strong>
+              <p>${escapeHtml(reportSummaryText(report))}</p>
+            </div>
+            <button type="button" class="btn-secondary view-report-detail-btn" data-report-index="${index}">内容を見る</button>
+          `;
+          list.appendChild(card);
+        });
+        renderReportDetail(reports.slice().sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')))[0]);
+      };
       const renderAnalysisView = () => {
         const reports = getAllReports();
         const logs = collectWorkLogs();
         const reportCount = $('#analysis-report-count');
         const list = $('#analysis-work-list');
         if(reportCount) reportCount.textContent = `${reports.length}件`;
+        renderSavedReportList(reports);
         if(!list) return;
         const grouped = {};
         logs.forEach(log => {
@@ -1619,6 +1718,12 @@
         setNotes(getNotes().filter(note => note.id !== button.dataset.noteId));
         renderManagementViews();
         setSaveStatus('メモを削除しました');
+      });
+      $('#saved-report-list')?.addEventListener('click', (event) => {
+        const button = event.target.closest('.view-report-detail-btn');
+        if(!button) return;
+        const reports = getAllReports().slice().sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')));
+        renderReportDetail(reports[Number(button.dataset.reportIndex || 0)]);
       });
       $('#export-json-btn')?.addEventListener('click', exportJson);
       $('#import-json-input')?.addEventListener('change', (event) => {
