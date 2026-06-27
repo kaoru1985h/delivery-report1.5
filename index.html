@@ -436,10 +436,6 @@
             </select>
           </div>
           <div class="form-group">
-            <label for="note-tag">作業内容タグ</label>
-            <select id="note-tag"></select>
-          </div>
-          <div class="form-group">
             <label for="note-body">本文</label>
             <textarea id="note-body" placeholder="例: 先に配送順で箱を並べると迷いにくい"></textarea>
           </div>
@@ -456,7 +452,6 @@
               <option value="ナレッジ">ナレッジ</option>
               <option value="タスク">タスク</option>
             </select>
-            <select id="filter-note-tag"></select>
             <input type="search" id="filter-note-text" placeholder="キーワード検索">
           </div>
           <div class="notes-list" id="notes-list"></div>
@@ -1093,32 +1088,6 @@
           list.appendChild(card);
         });
       };
-      const noteTags = () => {
-        const tags = [];
-        DEFAULT_INTERNAL_WORK_ITEMS.concat(CLEANUP_WORK_ITEMS, INSPECTION_WORK_ITEMS, RECEIVING_WORK_ITEMS).forEach(tag => {
-          if(tag && !tags.includes(tag)) tags.push(tag);
-        });
-        collectWorkLogs().forEach(log => {
-          if(log.tag && !tags.includes(log.tag)) tags.push(log.tag);
-        });
-        return tags;
-      };
-      const renderNoteTagSelects = () => {
-        const tags = noteTags();
-        ['#note-tag','#filter-note-tag'].forEach(selector => {
-          const select = $(selector);
-          if(!select) return;
-          const current = select.value;
-          select.innerHTML = selector === '#filter-note-tag' ? '<option value="">タグすべて</option>' : '';
-          tags.forEach(tag => {
-            const option = document.createElement('option');
-            option.value = tag;
-            option.textContent = tag;
-            select.appendChild(option);
-          });
-          if(Array.from(select.options).some(option => option.value === current)) select.value = current;
-        });
-      };
       const clearNoteForm = () => {
         const noteDate = $('#note-date');
         const noteKind = $('#note-kind');
@@ -1126,20 +1095,16 @@
         if(noteDate) noteDate.value = reportDate.value || todayText();
         if(noteKind) noteKind.value = '改善';
         if(noteBody) noteBody.value = '';
-        renderNoteTagSelects();
       };
       const renderNotesView = () => {
-        renderNoteTagSelects();
         const list = $('#notes-list');
         if(!list) return;
         const kind = $('#filter-note-kind')?.value || '';
-        const tag = $('#filter-note-tag')?.value || '';
         const text = ($('#filter-note-text')?.value || '').trim();
         const notes = getNotes().filter(note => {
           const noteKind = normalizeNoteKind(note.kind || '');
           if(kind && noteKind !== kind) return false;
-          if(tag && note.tag !== tag) return false;
-          if(text && !`${note.date} ${note.kind} ${note.tag} ${note.body}`.includes(text)) return false;
+          if(text && !`${note.date} ${note.kind} ${note.body}`.includes(text)) return false;
           return true;
         }).sort((a, b) => `${b.date || ''}${b.updatedAt || ''}`.localeCompare(`${a.date || ''}${a.updatedAt || ''}`));
         list.innerHTML = '';
@@ -1151,7 +1116,7 @@
           const card = document.createElement('article');
           card.className = 'note-card';
           card.innerHTML = `
-            <div class="note-meta"><span>${note.date || ''}</span><span>${normalizeNoteKind(note.kind || '')}</span><span>${note.tag || ''}</span></div>
+            <div class="note-meta"><span>${note.date || ''}</span><span>${normalizeNoteKind(note.kind || '')}</span></div>
             <strong>${note.body || ''}</strong>
             <div class="button-row" style="margin-top:.75rem">
               <button type="button" class="btn-secondary delete-note-btn" data-note-id="${note.id}">削除</button>
@@ -1191,7 +1156,6 @@
           id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
           date: $('#note-date')?.value || reportDate.value || todayText(),
           kind: $('#note-kind')?.value || '改善',
-          tag: $('#note-tag')?.value || 'その他',
           body,
           updatedAt: new Date().toISOString()
         });
@@ -1246,8 +1210,8 @@
         downloadText(`work_logs_${todayText()}.csv`, rows.map(row => row.map(escapeCsv).join(',')).join('\n'), 'text/csv;charset=utf-8');
       };
       const exportNotesCsv = () => {
-        const rows = [['日付','種類','作業内容タグ','本文']];
-        getNotes().forEach(note => rows.push([note.date, note.kind, note.tag, note.body]));
+        const rows = [['日付','種類','本文']];
+        getNotes().forEach(note => rows.push([note.date, normalizeNoteKind(note.kind || ''), note.body]));
         downloadText(`notes_${todayText()}.csv`, rows.map(row => row.map(escapeCsv).join(',')).join('\n'), 'text/csv;charset=utf-8');
       };
       // --- Dynamic creators ---
@@ -1622,7 +1586,7 @@
       });
       $('#save-note-btn')?.addEventListener('click', saveNote);
       $('#clear-note-btn')?.addEventListener('click', clearNoteForm);
-      ['#filter-note-kind','#filter-note-tag','#filter-note-text'].forEach(selector => {
+      ['#filter-note-kind','#filter-note-text'].forEach(selector => {
         $(selector)?.addEventListener('input', renderNotesView);
       });
       $('#notes-list')?.addEventListener('click', (event) => {
