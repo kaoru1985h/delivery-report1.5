@@ -43,6 +43,39 @@
       background-color:var(--surface-color);border-radius:8px;
       padding:1.5rem;margin-bottom:1.5rem;box-shadow:var(--shadow)
     }
+    .tabs{
+      position:sticky;top:0;z-index:10;
+      display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:.4rem;
+      background:rgba(248,249,250,.94);padding:.5rem 0 .8rem;
+      backdrop-filter:blur(8px)
+    }
+    .tab-button{
+      padding:.7rem .45rem;font-size:.95rem;background:#fff;color:var(--secondary-color);
+      border:1px solid var(--border-color);box-shadow:none
+    }
+    .tab-button.is-active{background:var(--primary-color);border-color:var(--primary-color);color:#fff}
+    .app-view{display:none}
+    .app-view.is-active{display:block}
+    .panel{
+      background:var(--surface-color);border-radius:8px;
+      padding:1.2rem;margin-bottom:1.2rem;box-shadow:var(--shadow)
+    }
+    .metric-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:.8rem;margin-bottom:1.2rem}
+    .metric-card{border:1px solid var(--border-color);border-radius:8px;padding:1rem;background:#fff}
+    .metric-label{font-size:.86rem;color:var(--secondary-color);font-weight:700}
+    .metric-value{font-size:1.45rem;font-weight:800;margin:.2rem 0}
+    .metric-sub{font-size:.86rem;color:var(--secondary-color)}
+    .analysis-list,.notes-list{display:grid;gap:.75rem}
+    .info-card,.note-card{
+      border:1px solid var(--border-color);border-radius:8px;padding:1rem;background:#fff
+    }
+    .info-card strong,.note-card strong{display:block;margin-bottom:.2rem}
+    .info-card p,.note-card p{color:var(--secondary-color);margin:.15rem 0 0}
+    .note-meta{display:flex;gap:.5rem;flex-wrap:wrap;color:var(--secondary-color);font-size:.9rem;margin-bottom:.4rem}
+    .button-row{display:flex;flex-wrap:wrap;gap:.75rem;align-items:center}
+    .button-row button{flex:0 0 auto}
+    .filters{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:.75rem;margin-bottom:1rem}
+    .empty{border:1px dashed var(--border-color);border-radius:8px;padding:1rem;color:var(--secondary-color);background:#fff}
 
     /* --- Form Elements --- */
     .form-group{margin-bottom:1.2rem}
@@ -185,6 +218,12 @@
     }
     footer button{width:100%}
     @media (max-width:599px){
+      #app{margin:10px auto;padding:0 10px}
+      section,.panel{padding:1rem}
+      .tabs{grid-template-columns:repeat(2,minmax(0,1fr))}
+      .input-group{display:grid;grid-template-columns:minmax(0,1fr) 64px}
+      .input-group input[type="time"]{min-width:0}
+      .now-btn{width:64px;flex:0 0 64px}
       .save-panel{align-items:stretch;flex-direction:column}
       .save-actions{flex-direction:column}
       .save-actions button{width:100%}
@@ -254,6 +293,14 @@
   <div id="app">
     <header><h1>配送業務日報</h1></header>
 
+    <nav class="tabs" aria-label="画面切り替え">
+      <button type="button" class="tab-button is-active" data-view="report">日報入力</button>
+      <button type="button" class="tab-button" data-view="analysis">分析</button>
+      <button type="button" class="tab-button" data-view="notes">改善メモ</button>
+      <button type="button" class="tab-button" data-view="storage">保存管理</button>
+    </nav>
+
+    <div id="view-report" class="app-view is-active">
     <main>
       <form id="reportForm" onsubmit="return false;">
         <section>
@@ -353,6 +400,111 @@
     <footer>
       <button type="button" id="print-btn" class="btn">PDF保存 / 印刷</button>
     </footer>
+    </div>
+
+    <div id="view-analysis" class="app-view">
+      <section>
+        <h2>分析</h2>
+        <div class="metric-grid">
+          <article class="metric-card">
+            <div class="metric-label">保存済み日報</div>
+            <div class="metric-value" id="analysis-report-count">0件</div>
+            <div class="metric-sub">この端末に保存された日数</div>
+          </article>
+          <article class="metric-card">
+            <div class="metric-label">作業タグ</div>
+            <div class="metric-value" id="analysis-work-count">0件</div>
+            <div class="metric-sub">時間つきで記録された作業数</div>
+          </article>
+          <article class="metric-card">
+            <div class="metric-label">平均作業時間</div>
+            <div class="metric-value" id="analysis-average-time">-</div>
+            <div class="metric-sub">社内業務の開始〜完了から計算</div>
+          </article>
+        </div>
+        <div class="panel">
+          <h2>作業別の平均時間</h2>
+          <div class="analysis-list" id="analysis-work-list"></div>
+        </div>
+      </section>
+    </div>
+
+    <div id="view-notes" class="app-view">
+      <section>
+        <h2>改善メモ</h2>
+        <div class="panel">
+          <div class="form-group">
+            <label for="note-date">日付</label>
+            <input type="date" id="note-date">
+          </div>
+          <div class="form-group">
+            <label for="note-kind">種類</label>
+            <select id="note-kind">
+              <option value="改善">改善</option>
+              <option value="気づき">気づき</option>
+              <option value="ナレッジ">ナレッジ</option>
+              <option value="次に試す">次に試す</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="note-tag">作業内容タグ</label>
+            <select id="note-tag"></select>
+          </div>
+          <div class="form-group">
+            <label for="note-body">本文</label>
+            <textarea id="note-body" placeholder="例: 先に配送順で箱を並べると迷いにくい"></textarea>
+          </div>
+          <div class="button-row">
+            <button type="button" id="save-note-btn" class="btn">メモを保存</button>
+            <button type="button" id="clear-note-btn" class="btn-secondary">入力をクリア</button>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="filters">
+            <select id="filter-note-kind">
+              <option value="">種類すべて</option>
+              <option value="改善">改善</option>
+              <option value="気づき">気づき</option>
+              <option value="ナレッジ">ナレッジ</option>
+              <option value="次に試す">次に試す</option>
+            </select>
+            <select id="filter-note-tag"></select>
+            <input type="search" id="filter-note-text" placeholder="キーワード検索">
+          </div>
+          <div class="notes-list" id="notes-list"></div>
+        </div>
+      </section>
+    </div>
+
+    <div id="view-storage" class="app-view">
+      <section>
+        <h2>保存管理</h2>
+        <div class="panel">
+          <h2>バックアップ</h2>
+          <p class="help-text">JSONはこのアプリに戻せる保存ファイルです。</p>
+          <div class="button-row">
+            <button type="button" id="export-json-btn" class="btn">JSONを書き出し</button>
+            <label class="btn-secondary" style="display:inline-flex;align-items:center;min-height:44px;border-radius:6px;padding:.75rem 1.5rem;font-weight:700;cursor:pointer">
+              JSONを読み込み
+              <input type="file" id="import-json-input" accept="application/json,.json" style="position:absolute;opacity:0;width:1px;height:1px">
+            </label>
+          </div>
+        </div>
+        <div class="panel">
+          <h2>表データ</h2>
+          <p class="help-text">CSVはExcelやスプレッドシートで確認できます。</p>
+          <div class="button-row">
+            <button type="button" id="export-reports-csv-btn" class="btn">日報CSV</button>
+            <button type="button" id="export-work-csv-btn" class="btn">作業ログCSV</button>
+            <button type="button" id="export-notes-csv-btn" class="btn-secondary">改善メモCSV</button>
+          </div>
+        </div>
+        <div class="panel">
+          <h2>保存状況</h2>
+          <div id="storage-summary" class="empty">保存データを確認中</div>
+        </div>
+      </section>
+    </div>
   </div>
 
   <!-- Templates -->
@@ -553,6 +705,7 @@
         '瓶体検査':'瓶体'
       };
       const STORAGE_PREFIX = 'delivery-report:v2:';
+      const NOTE_STORAGE_KEY = 'delivery-report:notes:v1';
 
       // --- Element Refs ---
       const reportForm = document.getElementById('reportForm');
@@ -586,11 +739,65 @@
       let uidCounter = 0;
 
       // --- Helpers ---
+      const $ = (selector, root = document) => root.querySelector(selector);
+      const $$ = (selector, root = document) => Array.from(root.querySelectorAll(selector));
       const formatTime = (d)=>`${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
       const formatDateInput = (d)=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
       const populateSelect = (el, opts)=>{ el.innerHTML=''; opts.forEach(t=>{ const o=document.createElement('option'); o.value=t; o.textContent=t; el.appendChild(o); }); };
       const storageKey = (date)=>`${STORAGE_PREFIX}${date}`;
       const setSaveStatus = (text)=>{ saveStatus.textContent = text; };
+      const todayText = () => formatDateInput(new Date());
+      const escapeCsv = (value) => `"${String(value == null ? '' : value).split('"').join('""')}"`;
+      const downloadText = (filename, text, type) => {
+        const blob = new Blob([text], { type });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = filename;
+        link.click();
+        URL.revokeObjectURL(url);
+      };
+      const minutesBetween = (start, end) => {
+        if(!start || !end) return null;
+        const parts = start.split(':').concat(end.split(':')).map(Number);
+        if(parts.some(Number.isNaN)) return null;
+        let from = parts[0] * 60 + parts[1];
+        let to = parts[2] * 60 + parts[3];
+        if(to < from) to += 24 * 60;
+        return to - from;
+      };
+      const formatMinutes = (minutes) => {
+        if(minutes == null || Number.isNaN(minutes)) return '-';
+        const rounded = Math.round(minutes);
+        const hours = Math.floor(rounded / 60);
+        const rest = rounded % 60;
+        return hours ? `${hours}時間${rest}分` : `${rest}分`;
+      };
+      const readJson = (key, fallback) => {
+        const raw = safeGet(key);
+        if(!raw) return fallback;
+        try{ return JSON.parse(raw); }
+        catch(_){ return fallback; }
+      };
+      const getAllReports = () => {
+        const reports = [];
+        try{
+          for(let i = 0; i < localStorage.length; i += 1){
+            const key = localStorage.key(i);
+            if(!key || !key.startsWith(STORAGE_PREFIX)) continue;
+            const raw = localStorage.getItem(key);
+            if(!raw) continue;
+            const report = JSON.parse(raw);
+            if(report && typeof report === 'object') reports.push(report);
+          }
+        }catch(_){}
+        return reports.sort((a, b) => String(a.date || '').localeCompare(String(b.date || '')));
+      };
+      const getNotes = () => {
+        const notes = readJson(NOTE_STORAGE_KEY, []);
+        return Array.isArray(notes) ? notes : [];
+      };
+      const setNotes = (notes) => safeSet(NOTE_STORAGE_KEY, JSON.stringify(notes));
       const setSelectValue = (select, value, otherInput, otherValue = '') => {
         if(!select) return;
         if(DELIVERY_LOCATIONS.includes(value)){ select.value = value; }
@@ -842,6 +1049,222 @@
         internalWorkList.innerHTML = '';
         (works && works.length ? works : [{}]).forEach(createInternalWorkItem);
       };
+      const collectWorkLogs = () => {
+        const logs = [];
+        getAllReports().forEach(report => {
+          (report.internalWorks || []).forEach(work => {
+            const duration = minutesBetween(work.start, work.end);
+            if(duration == null) return;
+            formatInternalWorkLabels(work).forEach(label => {
+              logs.push({
+                date: report.date || '',
+                userName: report.userName || '',
+                tag: label,
+                start: work.start || '',
+                end: work.end || '',
+                minutes: duration
+              });
+            });
+          });
+        });
+        return logs;
+      };
+      const renderAnalysisView = () => {
+        const reports = getAllReports();
+        const logs = collectWorkLogs();
+        const average = logs.length ? logs.reduce((sum, log) => sum + log.minutes, 0) / logs.length : null;
+        const reportCount = $('#analysis-report-count');
+        const workCount = $('#analysis-work-count');
+        const averageTime = $('#analysis-average-time');
+        const list = $('#analysis-work-list');
+        if(reportCount) reportCount.textContent = `${reports.length}件`;
+        if(workCount) workCount.textContent = `${logs.length}件`;
+        if(averageTime) averageTime.textContent = formatMinutes(average);
+        if(!list) return;
+        const grouped = {};
+        logs.forEach(log => {
+          if(!grouped[log.tag]) grouped[log.tag] = [];
+          grouped[log.tag].push(log);
+        });
+        const rows = Object.keys(grouped).map(tag => {
+          const values = grouped[tag].map(log => log.minutes);
+          const avg = values.reduce((sum, value) => sum + value, 0) / values.length;
+          return {
+            tag,
+            count: values.length,
+            avg,
+            min: Math.min(...values),
+            max: Math.max(...values)
+          };
+        }).sort((a, b) => b.avg - a.avg);
+        list.innerHTML = '';
+        if(!rows.length){
+          list.innerHTML = '<div class="empty">作業時間の記録がまだありません。</div>';
+          return;
+        }
+        rows.forEach(row => {
+          const card = document.createElement('article');
+          card.className = 'info-card';
+          card.innerHTML = `<strong>${row.tag}</strong><p>平均 ${formatMinutes(row.avg)} / 回数 ${row.count}回 / 最短 ${formatMinutes(row.min)} / 最長 ${formatMinutes(row.max)}</p>`;
+          list.appendChild(card);
+        });
+      };
+      const noteTags = () => {
+        const tags = [];
+        DEFAULT_INTERNAL_WORK_ITEMS.concat(CLEANUP_WORK_ITEMS, INSPECTION_WORK_ITEMS, RECEIVING_WORK_ITEMS).forEach(tag => {
+          if(tag && !tags.includes(tag)) tags.push(tag);
+        });
+        collectWorkLogs().forEach(log => {
+          if(log.tag && !tags.includes(log.tag)) tags.push(log.tag);
+        });
+        return tags;
+      };
+      const renderNoteTagSelects = () => {
+        const tags = noteTags();
+        ['#note-tag','#filter-note-tag'].forEach(selector => {
+          const select = $(selector);
+          if(!select) return;
+          const current = select.value;
+          select.innerHTML = selector === '#filter-note-tag' ? '<option value="">タグすべて</option>' : '';
+          tags.forEach(tag => {
+            const option = document.createElement('option');
+            option.value = tag;
+            option.textContent = tag;
+            select.appendChild(option);
+          });
+          if(Array.from(select.options).some(option => option.value === current)) select.value = current;
+        });
+      };
+      const clearNoteForm = () => {
+        const noteDate = $('#note-date');
+        const noteKind = $('#note-kind');
+        const noteBody = $('#note-body');
+        if(noteDate) noteDate.value = reportDate.value || todayText();
+        if(noteKind) noteKind.value = '改善';
+        if(noteBody) noteBody.value = '';
+        renderNoteTagSelects();
+      };
+      const renderNotesView = () => {
+        renderNoteTagSelects();
+        const list = $('#notes-list');
+        if(!list) return;
+        const kind = $('#filter-note-kind')?.value || '';
+        const tag = $('#filter-note-tag')?.value || '';
+        const text = ($('#filter-note-text')?.value || '').trim();
+        const notes = getNotes().filter(note => {
+          if(kind && note.kind !== kind) return false;
+          if(tag && note.tag !== tag) return false;
+          if(text && !`${note.date} ${note.kind} ${note.tag} ${note.body}`.includes(text)) return false;
+          return true;
+        }).sort((a, b) => `${b.date || ''}${b.updatedAt || ''}`.localeCompare(`${a.date || ''}${a.updatedAt || ''}`));
+        list.innerHTML = '';
+        if(!notes.length){
+          list.innerHTML = '<div class="empty">改善メモはまだありません。</div>';
+          return;
+        }
+        notes.forEach(note => {
+          const card = document.createElement('article');
+          card.className = 'note-card';
+          card.innerHTML = `
+            <div class="note-meta"><span>${note.date || ''}</span><span>${note.kind || ''}</span><span>${note.tag || ''}</span></div>
+            <strong>${note.body || ''}</strong>
+            <div class="button-row" style="margin-top:.75rem">
+              <button type="button" class="btn-secondary delete-note-btn" data-note-id="${note.id}">削除</button>
+            </div>
+          `;
+          list.appendChild(card);
+        });
+      };
+      const renderStorageView = () => {
+        const summary = $('#storage-summary');
+        if(!summary) return;
+        const reports = getAllReports();
+        const notes = getNotes();
+        const first = reports[0]?.date || '-';
+        const last = reports[reports.length - 1]?.date || '-';
+        summary.textContent = `日報 ${reports.length}件 / 改善メモ ${notes.length}件 / 期間 ${first} 〜 ${last}`;
+      };
+      const renderManagementViews = () => {
+        renderAnalysisView();
+        renderNotesView();
+        renderStorageView();
+      };
+      const switchView = (name) => {
+        $$('.tab-button').forEach(button => button.classList.toggle('is-active', button.dataset.view === name));
+        $$('.app-view').forEach(view => view.classList.toggle('is-active', view.id === `view-${name}`));
+        renderManagementViews();
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      };
+      const saveNote = () => {
+        const body = ($('#note-body')?.value || '').trim();
+        if(!body){
+          window.alert('メモ本文を入力してください。');
+          return;
+        }
+        const notes = getNotes();
+        notes.unshift({
+          id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
+          date: $('#note-date')?.value || reportDate.value || todayText(),
+          kind: $('#note-kind')?.value || '改善',
+          tag: $('#note-tag')?.value || 'その他',
+          body,
+          updatedAt: new Date().toISOString()
+        });
+        setNotes(notes);
+        clearNoteForm();
+        renderManagementViews();
+        setSaveStatus('改善メモを保存しました');
+      };
+      const exportJson = () => {
+        saveReport(undefined, { force:true, silent:true });
+        const data = {
+          exportedAt: new Date().toISOString(),
+          reports: getAllReports(),
+          notes: getNotes()
+        };
+        downloadText(`delivery_report_backup_${todayText()}.json`, JSON.stringify(data, null, 2), 'application/json;charset=utf-8');
+      };
+      const importJson = (file) => {
+        if(!file) return;
+        const reader = new FileReader();
+        reader.onload = () => {
+          try{
+            const data = JSON.parse(reader.result);
+            if(Array.isArray(data.reports)){
+              data.reports.forEach(report => {
+                if(report && report.date) safeSet(storageKey(report.date), JSON.stringify(report));
+              });
+            }
+            if(Array.isArray(data.notes)) setNotes(data.notes);
+            loadReport(reportDate.value || todayText());
+            renderManagementViews();
+            setSaveStatus('JSONを読み込みました');
+          }catch(_){
+            window.alert('JSONを読み込めませんでした。ファイルを確認してください。');
+          }
+        };
+        reader.readAsText(file);
+      };
+      const exportReportsCsv = () => {
+        saveReport(undefined, { force:true, silent:true });
+        const rows = [['日付','氏名','出発時間','帰社時間','走行距離(km)','翌日配送ルート','特記事項']];
+        getAllReports().forEach(report => {
+          const routes = (report.nextRoutes || []).map(routeLabel).filter(Boolean).join(' / ');
+          rows.push([report.date, report.userName, report.departureTime, report.returnTime, report.mileage, routes, report.specialNotes]);
+        });
+        downloadText(`reports_${todayText()}.csv`, rows.map(row => row.map(escapeCsv).join(',')).join('\n'), 'text/csv;charset=utf-8');
+      };
+      const exportWorkCsv = () => {
+        saveReport(undefined, { force:true, silent:true });
+        const rows = [['日付','氏名','作業内容','開始時間','完了時間','作業時間(分)']];
+        collectWorkLogs().forEach(log => rows.push([log.date, log.userName, log.tag, log.start, log.end, log.minutes]));
+        downloadText(`work_logs_${todayText()}.csv`, rows.map(row => row.map(escapeCsv).join(',')).join('\n'), 'text/csv;charset=utf-8');
+      };
+      const exportNotesCsv = () => {
+        const rows = [['日付','種類','作業内容タグ','本文']];
+        getNotes().forEach(note => rows.push([note.date, note.kind, note.tag, note.body]));
+        downloadText(`notes_${todayText()}.csv`, rows.map(row => row.map(escapeCsv).join(',')).join('\n'), 'text/csv;charset=utf-8');
+      };
       // --- Dynamic creators ---
       const createDeliveryItem = (data = {}) => {
         const content = deliveryTemplate.content.cloneNode(true);
@@ -1063,6 +1486,7 @@
           const now = new Date();
           setSaveStatus(`${date} の入力を保存しました（${formatTime(now)}）`);
         }
+        if(saved) renderManagementViews();
         return saved;
       };
       const scheduleSave = () => {
@@ -1103,6 +1527,7 @@
         currentStorageDate = data.date || date;
         setSaveStatus(`${currentStorageDate} の保存データを読み込みました`);
         isRestoring = false;
+        renderManagementViews();
       };
       const changeReportDate = () => {
         if(isRestoring) return;
@@ -1207,6 +1632,30 @@
       });
       saveDataBtn.addEventListener('click', () => { suppressSaveUntilEdit = false; saveReport(undefined, { force:true }); });
       resetDayBtn.addEventListener('click', resetCurrentDay);
+      $$('.tab-button').forEach(button => {
+        button.addEventListener('click', () => switchView(button.dataset.view));
+      });
+      $('#save-note-btn')?.addEventListener('click', saveNote);
+      $('#clear-note-btn')?.addEventListener('click', clearNoteForm);
+      ['#filter-note-kind','#filter-note-tag','#filter-note-text'].forEach(selector => {
+        $(selector)?.addEventListener('input', renderNotesView);
+      });
+      $('#notes-list')?.addEventListener('click', (event) => {
+        const button = event.target.closest('.delete-note-btn');
+        if(!button) return;
+        if(!window.confirm('この改善メモを削除しますか？')) return;
+        setNotes(getNotes().filter(note => note.id !== button.dataset.noteId));
+        renderManagementViews();
+        setSaveStatus('改善メモを削除しました');
+      });
+      $('#export-json-btn')?.addEventListener('click', exportJson);
+      $('#import-json-input')?.addEventListener('change', (event) => {
+        importJson(event.target.files && event.target.files[0]);
+        event.target.value = '';
+      });
+      $('#export-reports-csv-btn')?.addEventListener('click', exportReportsCsv);
+      $('#export-work-csv-btn')?.addEventListener('click', exportWorkCsv);
+      $('#export-notes-csv-btn')?.addEventListener('click', exportNotesCsv);
       window.addEventListener('beforeunload', () => saveReport(currentStorageDate || reportDate.value, { silent:true }));
 
       // ---- 印刷用：紙レイアウトへデータ流し込み ----
@@ -1293,6 +1742,8 @@
 
       // --- Initial State ---
       currentStorageDate = formatDateInput(new Date());
+      $('#note-date').value = currentStorageDate;
+      renderManagementViews();
       loadReport(currentStorageDate);
     });
   </script>
