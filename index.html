@@ -411,16 +411,6 @@
             <div class="metric-value" id="analysis-report-count">0件</div>
             <div class="metric-sub">この端末に保存された日数</div>
           </article>
-          <article class="metric-card">
-            <div class="metric-label">作業タグ</div>
-            <div class="metric-value" id="analysis-work-count">0件</div>
-            <div class="metric-sub">時間つきで記録された作業数</div>
-          </article>
-          <article class="metric-card">
-            <div class="metric-label">平均作業時間</div>
-            <div class="metric-value" id="analysis-average-time">-</div>
-            <div class="metric-sub">社内業務の開始〜完了から計算</div>
-          </article>
         </div>
         <div class="panel">
           <h2>作業別の平均時間</h2>
@@ -1072,14 +1062,9 @@
       const renderAnalysisView = () => {
         const reports = getAllReports();
         const logs = collectWorkLogs();
-        const average = logs.length ? logs.reduce((sum, log) => sum + log.minutes, 0) / logs.length : null;
         const reportCount = $('#analysis-report-count');
-        const workCount = $('#analysis-work-count');
-        const averageTime = $('#analysis-average-time');
         const list = $('#analysis-work-list');
         if(reportCount) reportCount.textContent = `${reports.length}件`;
-        if(workCount) workCount.textContent = `${logs.length}件`;
-        if(averageTime) averageTime.textContent = formatMinutes(average);
         if(!list) return;
         const grouped = {};
         logs.forEach(log => {
