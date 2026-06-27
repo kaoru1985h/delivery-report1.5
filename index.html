@@ -432,7 +432,7 @@
             <select id="note-kind">
               <option value="改善">改善</option>
               <option value="ナレッジ">ナレッジ</option>
-              <option value="次に試す">次に試す</option>
+              <option value="タスク">タスク</option>
             </select>
           </div>
           <div class="form-group">
@@ -454,7 +454,7 @@
               <option value="">種類すべて</option>
               <option value="改善">改善</option>
               <option value="ナレッジ">ナレッジ</option>
-              <option value="次に試す">次に試す</option>
+              <option value="タスク">タスク</option>
             </select>
             <select id="filter-note-tag"></select>
             <input type="search" id="filter-note-text" placeholder="キーワード検索">
@@ -786,6 +786,7 @@
         return Array.isArray(notes) ? notes : [];
       };
       const setNotes = (notes) => safeSet(NOTE_STORAGE_KEY, JSON.stringify(notes));
+      const normalizeNoteKind = (kind) => kind === '次に試す' ? 'タスク' : kind;
       const setSelectValue = (select, value, otherInput, otherValue = '') => {
         if(!select) return;
         if(DELIVERY_LOCATIONS.includes(value)){ select.value = value; }
@@ -1135,7 +1136,8 @@
         const tag = $('#filter-note-tag')?.value || '';
         const text = ($('#filter-note-text')?.value || '').trim();
         const notes = getNotes().filter(note => {
-          if(kind && note.kind !== kind) return false;
+          const noteKind = normalizeNoteKind(note.kind || '');
+          if(kind && noteKind !== kind) return false;
           if(tag && note.tag !== tag) return false;
           if(text && !`${note.date} ${note.kind} ${note.tag} ${note.body}`.includes(text)) return false;
           return true;
@@ -1149,7 +1151,7 @@
           const card = document.createElement('article');
           card.className = 'note-card';
           card.innerHTML = `
-            <div class="note-meta"><span>${note.date || ''}</span><span>${note.kind || ''}</span><span>${note.tag || ''}</span></div>
+            <div class="note-meta"><span>${note.date || ''}</span><span>${normalizeNoteKind(note.kind || '')}</span><span>${note.tag || ''}</span></div>
             <strong>${note.body || ''}</strong>
             <div class="button-row" style="margin-top:.75rem">
               <button type="button" class="btn-secondary delete-note-btn" data-note-id="${note.id}">削除</button>
