@@ -296,7 +296,7 @@
     <nav class="tabs" aria-label="画面切り替え">
       <button type="button" class="tab-button is-active" data-view="report">日報入力</button>
       <button type="button" class="tab-button" data-view="analysis">分析</button>
-      <button type="button" class="tab-button" data-view="notes">改善メモ</button>
+      <button type="button" class="tab-button" data-view="notes">メモ</button>
       <button type="button" class="tab-button" data-view="storage">保存管理</button>
     </nav>
 
@@ -421,7 +421,7 @@
 
     <div id="view-notes" class="app-view">
       <section>
-        <h2>改善メモ</h2>
+        <h2>メモ</h2>
         <div class="panel">
           <div class="form-group">
             <label for="note-date">日付</label>
@@ -446,6 +446,9 @@
         </div>
         <div class="panel">
           <div class="filters">
+            <select id="filter-note-date">
+              <option value="">日付すべて</option>
+            </select>
             <select id="filter-note-kind">
               <option value="">種類すべて</option>
               <option value="改善">改善</option>
@@ -479,7 +482,7 @@
           <div class="button-row">
             <button type="button" id="export-reports-csv-btn" class="btn">日報CSV</button>
             <button type="button" id="export-work-csv-btn" class="btn">作業ログCSV</button>
-            <button type="button" id="export-notes-csv-btn" class="btn-secondary">改善メモCSV</button>
+            <button type="button" id="export-notes-csv-btn" class="btn-secondary">メモCSV</button>
           </div>
         </div>
         <div class="panel">
@@ -1096,20 +1099,38 @@
         if(noteKind) noteKind.value = '改善';
         if(noteBody) noteBody.value = '';
       };
+      const renderNoteDateFilter = (notes) => {
+        const select = $('#filter-note-date');
+        if(!select) return;
+        const current = select.value;
+        const dates = Array.from(new Set(notes.map(note => note.date).filter(Boolean))).sort().reverse();
+        select.innerHTML = '<option value="">日付すべて</option>';
+        dates.forEach(date => {
+          const option = document.createElement('option');
+          option.value = date;
+          option.textContent = date;
+          select.appendChild(option);
+        });
+        if(dates.includes(current)) select.value = current;
+      };
       const renderNotesView = () => {
         const list = $('#notes-list');
         if(!list) return;
+        const allNotes = getNotes();
+        renderNoteDateFilter(allNotes);
+        const date = $('#filter-note-date')?.value || '';
         const kind = $('#filter-note-kind')?.value || '';
         const text = ($('#filter-note-text')?.value || '').trim();
-        const notes = getNotes().filter(note => {
+        const notes = allNotes.filter(note => {
           const noteKind = normalizeNoteKind(note.kind || '');
+          if(date && note.date !== date) return false;
           if(kind && noteKind !== kind) return false;
           if(text && !`${note.date} ${note.kind} ${note.body}`.includes(text)) return false;
           return true;
         }).sort((a, b) => `${b.date || ''}${b.updatedAt || ''}`.localeCompare(`${a.date || ''}${a.updatedAt || ''}`));
         list.innerHTML = '';
         if(!notes.length){
-          list.innerHTML = '<div class="empty">改善メモはまだありません。</div>';
+          list.innerHTML = '<div class="empty">メモはまだありません。</div>';
           return;
         }
         notes.forEach(note => {
@@ -1132,7 +1153,7 @@
         const notes = getNotes();
         const first = reports[0]?.date || '-';
         const last = reports[reports.length - 1]?.date || '-';
-        summary.textContent = `日報 ${reports.length}件 / 改善メモ ${notes.length}件 / 期間 ${first} 〜 ${last}`;
+        summary.textContent = `日報 ${reports.length}件 / メモ ${notes.length}件 / 期間 ${first} 〜 ${last}`;
       };
       const renderManagementViews = () => {
         renderAnalysisView();
@@ -1162,7 +1183,7 @@
         setNotes(notes);
         clearNoteForm();
         renderManagementViews();
-        setSaveStatus('改善メモを保存しました');
+        setSaveStatus('メモを保存しました');
       };
       const exportJson = () => {
         saveReport(undefined, { force:true, silent:true });
@@ -1586,16 +1607,16 @@
       });
       $('#save-note-btn')?.addEventListener('click', saveNote);
       $('#clear-note-btn')?.addEventListener('click', clearNoteForm);
-      ['#filter-note-kind','#filter-note-text'].forEach(selector => {
+      ['#filter-note-date','#filter-note-kind','#filter-note-text'].forEach(selector => {
         $(selector)?.addEventListener('input', renderNotesView);
       });
       $('#notes-list')?.addEventListener('click', (event) => {
         const button = event.target.closest('.delete-note-btn');
         if(!button) return;
-        if(!window.confirm('この改善メモを削除しますか？')) return;
+        if(!window.confirm('このメモを削除しますか？')) return;
         setNotes(getNotes().filter(note => note.id !== button.dataset.noteId));
         renderManagementViews();
-        setSaveStatus('改善メモを削除しました');
+        setSaveStatus('メモを削除しました');
       });
       $('#export-json-btn')?.addEventListener('click', exportJson);
       $('#import-json-input')?.addEventListener('change', (event) => {
