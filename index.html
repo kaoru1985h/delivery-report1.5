@@ -85,11 +85,35 @@
     .report-card{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:.75rem;align-items:center}
     .report-card button{padding:.55rem .9rem;min-height:38px}
     .report-detail{margin-top:1rem}
+    .report-calendar-stack{display:grid;gap:1rem}
+    .report-calendar-header{display:flex;justify-content:space-between;gap:.75rem;align-items:flex-end;margin-bottom:.5rem}
+    .report-calendar-title{font-weight:800;font-size:1.05rem}
+    .report-calendar-meta{color:var(--secondary-color);font-size:.9rem}
+    .report-calendar{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:.35rem}
+    .report-calendar-weekday{color:var(--secondary-color);font-size:.78rem;font-weight:800;text-align:center;padding:.25rem 0}
+    .report-calendar-day{
+      min-height:64px;border:1px solid var(--border-color);border-radius:8px;background:#f8f9fa;
+      padding:.35rem;display:flex;flex-direction:column;gap:.2rem;text-align:left;color:var(--secondary-color)
+    }
+    .report-calendar-day.has-report{background:#fff;color:var(--text-color);cursor:pointer}
+    .report-calendar-day.has-report:focus,.report-calendar-day.has-report:hover{
+      border-color:var(--primary-color);box-shadow:0 0 0 3px rgba(0,123,255,.16)
+    }
+    .report-calendar-day.is-active{background:#e7f1ff;border-color:var(--primary-color)}
+    .report-calendar-day-number{font-weight:800;font-size:.95rem}
+    .report-calendar-day-summary{font-size:.72rem;line-height:1.25;color:var(--secondary-color)}
+    .report-calendar-blank{min-height:64px}
+    .undated-report-list{display:grid;gap:.5rem;margin-top:1rem}
+    .undated-report-card{
+      display:flex;justify-content:space-between;gap:.75rem;align-items:center;
+      border:1px dashed var(--border-color);border-radius:8px;padding:.75rem;background:#fff
+    }
     .report-detail-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:.75rem;margin-top:.75rem}
     .report-detail-block{border:1px solid var(--border-color);border-radius:8px;background:#fff;padding:.85rem}
     .report-detail-block h3{font-size:1rem;margin-bottom:.45rem}
     .report-detail-block p{margin:.25rem 0;color:var(--secondary-color)}
     .report-card-actions{display:flex;gap:.5rem;flex-wrap:wrap;justify-content:flex-end}
+    .report-detail-actions{display:flex;justify-content:flex-end;gap:.5rem;margin-top:.75rem}
     .report-print-preview{border:1px solid #111;border-radius:4px;background:#fff;padding:1rem;color:#111}
     .report-preview-title{text-align:center;font-weight:800;font-size:1.15rem;margin-bottom:.75rem}
     .report-preview-table{width:100%;border-collapse:collapse;table-layout:fixed;margin-top:.55rem}
@@ -248,6 +272,11 @@
       .save-panel{align-items:stretch;flex-direction:column}
       .save-actions{flex-direction:column}
       .save-actions button{width:100%}
+      .report-calendar{gap:.25rem}
+      .report-calendar-day{min-height:54px;padding:.28rem}
+      .report-calendar-day-summary{font-size:.66rem}
+      .undated-report-card{align-items:stretch;flex-direction:column}
+      .undated-report-card .report-card-actions{justify-content:flex-start}
     }
     @media (min-width:600px){ footer{flex-direction:row} footer button{width:auto} }
 
@@ -1154,8 +1183,20 @@
         const routeCount = (report.nextRoutes || []).filter(route => routeLabel(route)).length;
         return `納品 ${deliveryCount}件 / 社内 ${workCount}件 / 翌日ルート ${routeCount}件`;
       };
+      const reportCompactSummaryText = (report) => {
+        const deliveryCount = (report.deliveries || []).filter(delivery => deliveryPlaceLabel(delivery)).length;
+        const workCount = (report.internalWorks || []).filter(work => formatInternalWorkLabels(work).length).length;
+        const routeCount = (report.nextRoutes || []).filter(route => routeLabel(route)).length;
+        return `納${deliveryCount} 社${workCount} ル${routeCount}`;
+      };
       const reportIdValue = (report) => report._storageKey || storageKey(report.date || '');
       const reportMonthValue = (report) => String(report.date || '').slice(0, 7);
+      const reportDateValue = (report) => String(report.date || '').slice(0, 10);
+      const formatMonthLabel = (month) => {
+        const parts = String(month || '').split('-');
+        if(parts.length !== 2) return month || '';
+        return `${Number(parts[0])}年${Number(parts[1])}月`;
+      };
       const renderReportMonthFilter = (reports) => {
         const select = $('#saved-report-month-filter');
         if(!select) return;
@@ -1170,6 +1211,13 @@
         });
         if(months.includes(current)) select.value = current;
       };
+      const reportsByDate = (reports) => reports.reduce((map, report) => {
+        const date = reportDateValue(report);
+        if(!/^\d{4}-\d{2}-\d{2}$/.test(date)) return map;
+        if(!map[date]) map[date] = [];
+        map[date].push(report);
+        return map;
+      }, {});
       const fixedRows = (rows, minRows) => {
         const result = rows.slice();
         while(result.length < minRows) result.push(['　', '　']);
@@ -1245,47 +1293,114 @@
               </tr>
             </table>
           </article>
+          <div class="report-detail-actions">
+            <button type="button" class="btn-secondary view-report-detail-btn" data-report-id="${escapeHtml(reportIdValue(report))}">閉じる</button>
+            <button type="button" class="btn-danger delete-report-btn" data-report-id="${escapeHtml(reportIdValue(report))}">削除</button>
+          </div>
         `;
       };
       const updateReportDetailButtons = () => {
         $$('.view-report-detail-btn').forEach(button => {
           const isOpen = button.dataset.reportId === openReportDetailDate;
-          button.textContent = isOpen ? '閉じる' : '内容を見る';
-          button.classList.toggle('btn', isOpen);
-          button.classList.toggle('btn-secondary', !isOpen);
+          if(button.classList.contains('report-calendar-day')){
+            button.classList.toggle('is-active', isOpen);
+          }else{
+            button.textContent = isOpen ? '閉じる' : '内容を見る';
+            button.classList.toggle('btn', isOpen);
+            button.classList.toggle('btn-secondary', !isOpen);
+          }
           button.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
         });
+      };
+      const renderCalendarMonth = (month, reportsForMonth, dateMap) => {
+        const [yearText, monthText] = month.split('-');
+        const year = Number(yearText);
+        const monthIndex = Number(monthText) - 1;
+        const firstDay = new Date(year, monthIndex, 1);
+        const daysInMonth = new Date(year, monthIndex + 1, 0).getDate();
+        const blanks = firstDay.getDay();
+        let html = `
+          <div class="report-calendar-block">
+            <div class="report-calendar-header">
+              <div class="report-calendar-title">${escapeHtml(formatMonthLabel(month))}</div>
+              <div class="report-calendar-meta">${reportsForMonth.length}件</div>
+            </div>
+            <div class="report-calendar" role="grid" aria-label="${escapeHtml(formatMonthLabel(month))}の保存済み日報">
+              ${['日','月','火','水','木','金','土'].map(day => `<div class="report-calendar-weekday">${day}</div>`).join('')}
+        `;
+        for(let index = 0; index < blanks; index += 1){
+          html += '<div class="report-calendar-blank" aria-hidden="true"></div>';
+        }
+        for(let day = 1; day <= daysInMonth; day += 1){
+          const date = `${month}-${String(day).padStart(2, '0')}`;
+          const dayReports = dateMap[date] || [];
+          const primaryReport = dayReports[dayReports.length - 1];
+          if(primaryReport){
+            const reportId = reportIdValue(primaryReport);
+            const isActive = reportId === openReportDetailDate;
+            const extra = dayReports.length > 1 ? ` 他${dayReports.length - 1}` : '';
+            html += `
+              <button type="button" class="report-calendar-day has-report view-report-detail-btn${isActive ? ' is-active' : ''}" data-report-id="${escapeHtml(reportId)}">
+                <span class="report-calendar-day-number">${day}</span>
+                <span class="report-calendar-day-summary">${escapeHtml(reportCompactSummaryText(primaryReport))}${escapeHtml(extra)}</span>
+              </button>
+            `;
+          }else{
+            html += `
+              <div class="report-calendar-day" aria-label="${day}日の日報なし">
+                <span class="report-calendar-day-number">${day}</span>
+              </div>
+            `;
+          }
+        }
+        html += '</div></div>';
+        return html;
       };
       const renderSavedReportList = (reports) => {
         const list = $('#saved-report-list');
         if(!list) return;
         renderReportMonthFilter(reports);
         const month = $('#saved-report-month-filter')?.value || '';
-        const filteredReports = reports.filter(report => !month || reportMonthValue(report) === month);
-        const sortedReports = filteredReports.slice().sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')));
+        const datedReports = reports.filter(report => /^\d{4}-\d{2}-\d{2}$/.test(reportDateValue(report)));
+        const filteredReports = datedReports.filter(report => !month || reportMonthValue(report) === month);
+        const months = Array.from(new Set(filteredReports.map(reportMonthValue).filter(Boolean))).sort().reverse();
+        const dateMap = reportsByDate(filteredReports);
+        const undatedReports = reports.filter(report => !/^\d{4}-\d{2}-\d{2}$/.test(reportDateValue(report)));
         list.innerHTML = '';
-        if(!sortedReports.length){
+        if(!filteredReports.length && !undatedReports.length){
           list.innerHTML = '<div class="empty">保存済み日報はまだありません。</div>';
           renderReportDetail(null);
           updateReportDetailButtons();
           return;
         }
-        renderReportDetail(null);
-        sortedReports.forEach((report) => {
-          const card = document.createElement('article');
-          card.className = 'info-card report-card';
-          card.innerHTML = `
-            <div>
-              <strong>${escapeHtml(report.date || '日付未入力')} ${escapeHtml(report.userName || '')}</strong>
-              <p>${escapeHtml(reportSummaryText(report))}</p>
+        if(openReportDetailDate && !reports.some(report => reportIdValue(report) === openReportDetailDate)){
+          renderReportDetail(null);
+        }
+        list.innerHTML = `
+          <div class="report-calendar-stack">
+            ${months.map(calendarMonth => renderCalendarMonth(
+              calendarMonth,
+              filteredReports.filter(report => reportMonthValue(report) === calendarMonth),
+              dateMap
+            )).join('')}
+          </div>
+          ${undatedReports.length ? `
+            <div class="undated-report-list">
+              ${undatedReports.map(report => `
+                <article class="undated-report-card">
+                  <div>
+                    <strong>${escapeHtml(report.date || '日付未入力')} ${escapeHtml(report.userName || '')}</strong>
+                    <p>${escapeHtml(reportSummaryText(report))}</p>
+                  </div>
+                  <div class="report-card-actions">
+                    <button type="button" class="btn-secondary view-report-detail-btn" data-report-id="${escapeHtml(reportIdValue(report))}">内容を見る</button>
+                    <button type="button" class="btn-danger delete-report-btn" data-report-id="${escapeHtml(reportIdValue(report))}">削除</button>
+                  </div>
+                </article>
+              `).join('')}
             </div>
-            <div class="report-card-actions">
-              <button type="button" class="btn-secondary view-report-detail-btn" data-report-id="${escapeHtml(reportIdValue(report))}">内容を見る</button>
-              <button type="button" class="btn-danger delete-report-btn" data-report-id="${escapeHtml(reportIdValue(report))}">削除</button>
-            </div>
-          `;
-          list.appendChild(card);
-        });
+          ` : ''}
+        `;
         updateReportDetailButtons();
       };
       const renderAnalysisView = () => {
@@ -1851,7 +1966,7 @@
         renderManagementViews();
         setSaveStatus('メモを削除しました');
       });
-      $('#saved-report-list')?.addEventListener('click', (event) => {
+      const handleSavedReportAction = (event) => {
         const viewButton = event.target.closest('.view-report-detail-btn');
         const deleteButton = event.target.closest('.delete-report-btn');
         const button = viewButton || deleteButton;
@@ -1882,8 +1997,13 @@
           renderManagementViews();
           setSaveStatus(`${label} の保存済み日報を削除しました`);
         }
+      };
+      $('#saved-report-list')?.addEventListener('click', handleSavedReportAction);
+      $('#saved-report-detail')?.addEventListener('click', handleSavedReportAction);
+      $('#saved-report-month-filter')?.addEventListener('change', () => {
+        renderReportDetail(null);
+        renderAnalysisView();
       });
-      $('#saved-report-month-filter')?.addEventListener('change', renderAnalysisView);
       $('#export-json-btn')?.addEventListener('click', exportJson);
       $('#import-json-input')?.addEventListener('change', (event) => {
         importJson(event.target.files && event.target.files[0]);
