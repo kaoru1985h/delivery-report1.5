@@ -83,6 +83,14 @@
     .report-detail-block{border:1px solid var(--border-color);border-radius:8px;background:#fff;padding:.85rem}
     .report-detail-block h3{font-size:1rem;margin-bottom:.45rem}
     .report-detail-block p{margin:.25rem 0;color:var(--secondary-color)}
+    .report-card-actions{display:flex;gap:.5rem;flex-wrap:wrap;justify-content:flex-end}
+    .report-print-preview{border:1px solid #111;border-radius:4px;background:#fff;padding:1rem;color:#111}
+    .report-preview-title{text-align:center;font-weight:800;font-size:1.15rem;margin-bottom:.75rem}
+    .report-preview-table{width:100%;border-collapse:collapse;table-layout:fixed;margin-top:.55rem}
+    .report-preview-table th,.report-preview-table td{border:1px solid #111;padding:.45rem;vertical-align:middle;overflow-wrap:anywhere}
+    .report-preview-table th{text-align:center;background:#f8f9fa}
+    .report-preview-small{font-size:.9rem}
+    .report-preview-stamp{height:36px}
 
     /* --- Form Elements --- */
     .form-group{margin-bottom:1.2rem}
@@ -421,6 +429,11 @@
         </div>
         <div class="panel">
           <h2>保存済み日報一覧</h2>
+          <div class="filters">
+            <select id="saved-report-month-filter">
+              <option value="">月すべて</option>
+            </select>
+          </div>
           <div class="analysis-list" id="saved-report-list"></div>
           <div class="report-detail" id="saved-report-detail"></div>
         </div>
@@ -1087,6 +1100,26 @@
         const routeCount = (report.nextRoutes || []).filter(route => routeLabel(route)).length;
         return `納品 ${deliveryCount}件 / 社内 ${workCount}件 / 翌日ルート ${routeCount}件`;
       };
+      const reportMonthValue = (report) => String(report.date || '').slice(0, 7);
+      const renderReportMonthFilter = (reports) => {
+        const select = $('#saved-report-month-filter');
+        if(!select) return;
+        const current = select.value;
+        const months = Array.from(new Set(reports.map(reportMonthValue).filter(Boolean))).sort().reverse();
+        select.innerHTML = '<option value="">月すべて</option>';
+        months.forEach(month => {
+          const option = document.createElement('option');
+          option.value = month;
+          option.textContent = month.replace('-', '/');
+          select.appendChild(option);
+        });
+        if(months.includes(current)) select.value = current;
+      };
+      const fixedRows = (rows, minRows) => {
+        const result = rows.slice();
+        while(result.length < minRows) result.push(['　', '　']);
+        return result;
+      };
       const renderReportDetail = (report) => {
         const root = $('#saved-report-detail');
         if(!root) return;
@@ -1094,55 +1127,84 @@
           root.innerHTML = '';
           return;
         }
-        const deliveries = (report.deliveries || [])
-          .map(delivery => {
-            const time = timeRangeText(delivery.start || '', delivery.end || '');
-            const place = deliveryPlaceLabel(delivery) || '納品先未入力';
-            return `<p>${escapeHtml(time)}　${escapeHtml(place)}</p>`;
-          })
-          .join('') || '<p>納品記録はありません。</p>';
-        const works = (report.internalWorks || [])
-          .map(work => {
-            const time = timeRangeText(work.start || '', work.end || '');
-            const labels = formatInternalWorkLabels(work).join('、') || '作業内容未入力';
-            return `<p>${escapeHtml(time)}　${escapeHtml(labels)}</p>`;
-          })
-          .join('') || '<p>社内業務の記録はありません。</p>';
+        const deliveryRows = fixedRows((report.deliveries || []).map(delivery => [
+          (delivery.start || delivery.end) ? `${delivery.start || ''} 〜 ${delivery.end || ''}` : '　',
+          deliveryPlaceLabel(delivery) || '　'
+        ]), 6);
+        const workRows = fixedRows((report.internalWorks || []).map(work => [
+          (work.start || work.end) ? `${work.start || ''} 〜 ${work.end || ''}` : '　',
+          formatInternalWorkLabels(work).join('、') || '　'
+        ]), 6);
         const routes = (report.nextRoutes || []).map(routeLabel).filter(Boolean);
         root.innerHTML = `
-          <article class="info-card">
-            <strong>${escapeHtml(report.date || '日付未入力')} ${escapeHtml(report.userName || '')}</strong>
-            <p>出発 ${escapeHtml(report.departureTime || '-')} / 帰社 ${escapeHtml(report.returnTime || '-')} / 距離 ${escapeHtml(report.mileage || '-')} km</p>
-            <div class="report-detail-grid">
-              <div class="report-detail-block">
-                <h3>配送業務</h3>
-                ${deliveries}
-              </div>
-              <div class="report-detail-block">
-                <h3>社内業務</h3>
-                ${works}
-              </div>
-              <div class="report-detail-block">
-                <h3>申し送り</h3>
-                <p><strong>翌日ルート</strong></p>
-                <p>${escapeHtml(routes.join(' / ') || '未選択')}</p>
-                <p><strong>特記事項</strong></p>
-                <p>${escapeHtml(report.specialNotes || 'なし')}</p>
-              </div>
-            </div>
+          <article class="report-print-preview">
+            <div class="report-preview-title">業務日報</div>
+            <table class="report-preview-table">
+              <tr>
+                <td style="width:56%;">
+                  <span class="report-preview-small">日付</span>　${escapeHtml(report.date || '')}<br>
+                  <span class="report-preview-small">製造部　作業者：</span>${escapeHtml(report.userName || '')}
+                </td>
+                <td style="width:44%;">
+                  <table class="report-preview-table" style="margin-top:0;">
+                    <tr>
+                      <th style="width:20%;">検<br>印</th>
+                      <td class="report-preview-stamp"></td>
+                      <td class="report-preview-stamp"></td>
+                      <td class="report-preview-stamp"></td>
+                    </tr>
+                  </table>
+                </td>
+              </tr>
+            </table>
+            <table class="report-preview-table">
+              <thead><tr><th style="width:40%;">納品時間</th><th>納品先</th></tr></thead>
+              <tbody>
+                ${deliveryRows.map(row => `<tr><td>${escapeHtml(row[0])}</td><td>${escapeHtml(row[1])}</td></tr>`).join('')}
+              </tbody>
+            </table>
+            <table class="report-preview-table">
+              <tr>
+                <td><strong>出発</strong>　${escapeHtml(report.departureTime || '')}</td>
+                <td><strong>帰社</strong>　${escapeHtml(report.returnTime || '')}</td>
+                <td><strong>距離</strong>　${escapeHtml(report.mileage || '')} km</td>
+              </tr>
+              <tr>
+                <td colspan="3"><strong>翌日ルート</strong>　${escapeHtml(routes.join(' / ') || '未選択')}</td>
+              </tr>
+            </table>
+            <table class="report-preview-table">
+              <thead><tr><th style="width:40%;">作業時間</th><th>業務内容</th></tr></thead>
+              <tbody>
+                ${workRows.map(row => `<tr><td>${escapeHtml(row[0])}</td><td>${escapeHtml(row[1])}</td></tr>`).join('')}
+              </tbody>
+            </table>
+            <table class="report-preview-table">
+              <tr>
+                <th>特記事項</th>
+              </tr>
+              <tr>
+                <td>${escapeHtml(report.specialNotes || '　')}</td>
+              </tr>
+            </table>
           </article>
         `;
       };
       const renderSavedReportList = (reports) => {
         const list = $('#saved-report-list');
         if(!list) return;
+        renderReportMonthFilter(reports);
+        const month = $('#saved-report-month-filter')?.value || '';
+        const filteredReports = reports.filter(report => !month || reportMonthValue(report) === month);
+        const sortedReports = filteredReports.slice().sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')));
         list.innerHTML = '';
-        if(!reports.length){
+        if(!sortedReports.length){
           list.innerHTML = '<div class="empty">保存済み日報はまだありません。</div>';
           renderReportDetail(null);
           return;
         }
-        reports.slice().sort((a, b) => String(b.date || '').localeCompare(String(a.date || ''))).forEach((report, index) => {
+        renderReportDetail(null);
+        sortedReports.forEach((report) => {
           const card = document.createElement('article');
           card.className = 'info-card report-card';
           card.innerHTML = `
@@ -1150,11 +1212,13 @@
               <strong>${escapeHtml(report.date || '日付未入力')} ${escapeHtml(report.userName || '')}</strong>
               <p>${escapeHtml(reportSummaryText(report))}</p>
             </div>
-            <button type="button" class="btn-secondary view-report-detail-btn" data-report-index="${index}">内容を見る</button>
+            <div class="report-card-actions">
+              <button type="button" class="btn-secondary view-report-detail-btn" data-report-date="${escapeHtml(report.date || '')}">内容を見る</button>
+              <button type="button" class="btn-danger delete-report-btn" data-report-date="${escapeHtml(report.date || '')}">削除</button>
+            </div>
           `;
           list.appendChild(card);
         });
-        renderReportDetail(reports.slice().sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')))[0]);
       };
       const renderAnalysisView = () => {
         const reports = getAllReports();
@@ -1720,11 +1784,28 @@
         setSaveStatus('メモを削除しました');
       });
       $('#saved-report-list')?.addEventListener('click', (event) => {
-        const button = event.target.closest('.view-report-detail-btn');
+        const viewButton = event.target.closest('.view-report-detail-btn');
+        const deleteButton = event.target.closest('.delete-report-btn');
+        const button = viewButton || deleteButton;
         if(!button) return;
-        const reports = getAllReports().slice().sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')));
-        renderReportDetail(reports[Number(button.dataset.reportIndex || 0)]);
+        const date = button.dataset.reportDate || '';
+        const report = getAllReports().find(item => item.date === date);
+        if(viewButton){
+          renderReportDetail(report);
+          $('#saved-report-detail')?.scrollIntoView({ behavior:'smooth', block:'start' });
+          return;
+        }
+        if(deleteButton){
+          if(!date || !window.confirm(`${date} の保存済み日報を削除しますか？`)) return;
+          safeRemove(storageKey(date));
+          if(currentStorageDate === date){
+            loadReport(date);
+          }
+          renderManagementViews();
+          setSaveStatus(`${date} の保存済み日報を削除しました`);
+        }
       });
+      $('#saved-report-month-filter')?.addEventListener('change', renderAnalysisView);
       $('#export-json-btn')?.addEventListener('click', exportJson);
       $('#import-json-input')?.addEventListener('change', (event) => {
         importJson(event.target.files && event.target.files[0]);
