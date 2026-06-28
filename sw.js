@@ -1,9 +1,11 @@
-const CACHE_NAME = 'delivery-report-v1';
+const CACHE_NAME = 'delivery-report-v2';
 const APP_FILES = [
   './',
   './index.html',
   './manifest.webmanifest',
-  './icon.svg'
+  './icon.svg',
+  './apple-touch-icon.png',
+  './icon-512.png'
 ];
 
 self.addEventListener('install', (event) => {
