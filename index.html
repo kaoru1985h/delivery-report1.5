@@ -1022,6 +1022,52 @@
         });
         return labels;
       };
+      const formatAnalysisWorkLabels = (work) => {
+        const normalized = normalizeInternalWorkData(work);
+        const labels = [];
+        normalized.items.forEach(item => {
+          if(item === 'その他'){
+            labels.push(normalized.other || 'その他');
+            return;
+          }
+          if(item === '検査'){
+            if(normalized.inspectionItems.length){
+              normalized.inspectionItems.forEach(inspection => labels.push(`検査（${inspection}）`));
+            }else{
+              labels.push('検査');
+            }
+            return;
+          }
+          if(item === '荷受け'){
+            if(normalized.receivingItems.length){
+              normalized.receivingItems.forEach(receiving => {
+                const label = receiving === 'その他' && normalized.receivingOther
+                  ? `その他（${normalized.receivingOther}）`
+                  : receiving;
+                labels.push(`荷受け（${label}）`);
+              });
+            }else{
+              labels.push('荷受け');
+            }
+            return;
+          }
+          if(item === '片付け'){
+            if(normalized.cleanupItems.length){
+              normalized.cleanupItems.forEach(cleanup => {
+                const label = cleanup === 'その他' && normalized.cleanupOther
+                  ? `その他（${normalized.cleanupOther}）`
+                  : cleanup;
+                labels.push(`片付け（${label}）`);
+              });
+            }else{
+              labels.push('片付け');
+            }
+            return;
+          }
+          labels.push(item);
+        });
+        return labels;
+      };
       const timeRangeText = (start, end) => {
         if(start && end) return `${start} 〜 ${end}`;
         if(start) return `${start} 〜`;
@@ -1083,7 +1129,7 @@
           (report.internalWorks || []).forEach(work => {
             const duration = minutesBetween(work.start, work.end);
             if(duration == null) return;
-            formatInternalWorkLabels(work).forEach(label => {
+            formatAnalysisWorkLabels(work).forEach(label => {
               logs.push({
                 date: report.date || '',
                 userName: report.userName || '',
