@@ -750,6 +750,7 @@
       let isRestoring = false;
       let suppressSaveUntilEdit = false;
       let uidCounter = 0;
+      let openReportDetailDate = '';
 
       // --- Helpers ---
       const $ = (selector, root = document) => root.querySelector(selector);
@@ -1124,9 +1125,11 @@
         const root = $('#saved-report-detail');
         if(!root) return;
         if(!report){
+          openReportDetailDate = '';
           root.innerHTML = '';
           return;
         }
+        openReportDetailDate = report.date || '';
         const deliveryRows = fixedRows((report.deliveries || []).map(delivery => [
           (delivery.start || delivery.end) ? `${delivery.start || ''} 〜 ${delivery.end || ''}` : '　',
           deliveryPlaceLabel(delivery) || '　'
@@ -1190,6 +1193,15 @@
           </article>
         `;
       };
+      const updateReportDetailButtons = () => {
+        $$('.view-report-detail-btn').forEach(button => {
+          const isOpen = button.dataset.reportDate === openReportDetailDate;
+          button.textContent = isOpen ? '閉じる' : '内容を見る';
+          button.classList.toggle('btn', isOpen);
+          button.classList.toggle('btn-secondary', !isOpen);
+          button.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+        });
+      };
       const renderSavedReportList = (reports) => {
         const list = $('#saved-report-list');
         if(!list) return;
@@ -1201,6 +1213,7 @@
         if(!sortedReports.length){
           list.innerHTML = '<div class="empty">保存済み日報はまだありません。</div>';
           renderReportDetail(null);
+          updateReportDetailButtons();
           return;
         }
         renderReportDetail(null);
@@ -1219,6 +1232,7 @@
           `;
           list.appendChild(card);
         });
+        updateReportDetailButtons();
       };
       const renderAnalysisView = () => {
         const reports = getAllReports();
@@ -1791,7 +1805,13 @@
         const date = button.dataset.reportDate || '';
         const report = getAllReports().find(item => item.date === date);
         if(viewButton){
+          if(openReportDetailDate === date){
+            renderReportDetail(null);
+            updateReportDetailButtons();
+            return;
+          }
           renderReportDetail(report);
+          updateReportDetailButtons();
           $('#saved-report-detail')?.scrollIntoView({ behavior:'smooth', block:'start' });
           return;
         }
