@@ -326,7 +326,7 @@
           </div>
           <div class="form-group">
             <label for="user-name">氏名</label>
-            <input type="text" id="user-name" placeholder="名前を入力" required>
+            <input type="text" id="user-name" value="比留田　薫" placeholder="名前を入力" required>
           </div>
         </section>
 
@@ -706,6 +706,7 @@
       const CLEANUP_WORK_ITEMS = ['指定納期','在庫品','資材','内職回収品','その他'];
       const INSPECTION_WORK_ITEMS = ['ノズルチップ','トリガー','瓶体','PPキャップ'];
       const RECEIVING_WORK_ITEMS = ['橋本瓶体','その他'];
+      const DEFAULT_USER_NAME = '比留田　薫';
       const LEGACY_CLEANUP_WORK_MAP = {
         '工場形品片付け':'資材',
         '指定納期品片付け':'指定納期',
@@ -1596,7 +1597,7 @@
       };
       const resetFormForDate = (date) => {
         reportDate.value = date || formatDateInput(new Date());
-        userName.value = '';
+        userName.value = DEFAULT_USER_NAME;
         departureTime.value = '';
         returnTime.value = '';
         mileage.value = '';
@@ -1661,7 +1662,7 @@
         }
 
         reportDate.value = data.date || date;
-        userName.value = data.userName || '';
+        userName.value = data.userName || DEFAULT_USER_NAME;
         departureTime.value = data.departureTime || '';
         returnTime.value = data.returnTime || '';
         mileage.value = data.mileage || '';
