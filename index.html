@@ -809,7 +809,7 @@
             const raw = localStorage.getItem(key);
             if(!raw) continue;
             const report = JSON.parse(raw);
-            if(report && typeof report === 'object') reports.push(report);
+            if(report && typeof report === 'object') reports.push(Object.assign({ _storageKey: key }, report));
           }
         }catch(_){}
         return reports.sort((a, b) => String(a.date || '').localeCompare(String(b.date || '')));
@@ -1102,6 +1102,7 @@
         const routeCount = (report.nextRoutes || []).filter(route => routeLabel(route)).length;
         return `納品 ${deliveryCount}件 / 社内 ${workCount}件 / 翌日ルート ${routeCount}件`;
       };
+      const reportIdValue = (report) => report._storageKey || storageKey(report.date || '');
       const reportMonthValue = (report) => String(report.date || '').slice(0, 7);
       const renderReportMonthFilter = (reports) => {
         const select = $('#saved-report-month-filter');
@@ -1130,7 +1131,7 @@
           root.innerHTML = '';
           return;
         }
-        openReportDetailDate = report.date || '';
+        openReportDetailDate = reportIdValue(report);
         const deliveryRows = fixedRows((report.deliveries || []).map(delivery => [
           (delivery.start || delivery.end) ? `${delivery.start || ''} 〜 ${delivery.end || ''}` : '　',
           deliveryPlaceLabel(delivery) || '　'
@@ -1196,7 +1197,7 @@
       };
       const updateReportDetailButtons = () => {
         $$('.view-report-detail-btn').forEach(button => {
-          const isOpen = button.dataset.reportDate === openReportDetailDate;
+          const isOpen = button.dataset.reportId === openReportDetailDate;
           button.textContent = isOpen ? '閉じる' : '内容を見る';
           button.classList.toggle('btn', isOpen);
           button.classList.toggle('btn-secondary', !isOpen);
@@ -1227,8 +1228,8 @@
               <p>${escapeHtml(reportSummaryText(report))}</p>
             </div>
             <div class="report-card-actions">
-              <button type="button" class="btn-secondary view-report-detail-btn" data-report-date="${escapeHtml(report.date || '')}">内容を見る</button>
-              <button type="button" class="btn-danger delete-report-btn" data-report-date="${escapeHtml(report.date || '')}">削除</button>
+              <button type="button" class="btn-secondary view-report-detail-btn" data-report-id="${escapeHtml(reportIdValue(report))}">内容を見る</button>
+              <button type="button" class="btn-danger delete-report-btn" data-report-id="${escapeHtml(reportIdValue(report))}">削除</button>
             </div>
           `;
           list.appendChild(card);
@@ -1803,10 +1804,10 @@
         const deleteButton = event.target.closest('.delete-report-btn');
         const button = viewButton || deleteButton;
         if(!button) return;
-        const date = button.dataset.reportDate || '';
-        const report = getAllReports().find(item => item.date === date);
+        const reportId = button.dataset.reportId || '';
+        const report = getAllReports().find(item => reportIdValue(item) === reportId);
         if(viewButton){
-          if(openReportDetailDate === date){
+          if(openReportDetailDate === reportId){
             renderReportDetail(null);
             updateReportDetailButtons();
             return;
@@ -1817,13 +1818,17 @@
           return;
         }
         if(deleteButton){
-          if(!date || !window.confirm(`${date} の保存済み日報を削除しますか？`)) return;
-          safeRemove(storageKey(date));
-          if(currentStorageDate === date){
-            loadReport(date);
+          const label = report?.date || '日付未入力';
+          if(!reportId || !window.confirm(`${label} の保存済み日報を削除しますか？`)) return;
+          safeRemove(reportId);
+          if(openReportDetailDate === reportId){
+            renderReportDetail(null);
+          }
+          if(report?.date && currentStorageDate === report.date){
+            loadReport(report.date);
           }
           renderManagementViews();
-          setSaveStatus(`${date} の保存済み日報を削除しました`);
+          setSaveStatus(`${label} の保存済み日報を削除しました`);
         }
       });
       $('#saved-report-month-filter')?.addEventListener('change', renderAnalysisView);
