@@ -462,11 +462,11 @@
       <div class="save-confirmation" id="save-confirmation" aria-live="polite">
         <div>
           <strong>保存しました</strong>
-          <span id="save-confirmation-text">このまま入力を続けるか、リセットして終われます。</span>
+          <span id="save-confirmation-text">このまま入力を続けるか、保存データを残して入力欄だけ空にできます。</span>
         </div>
         <div class="save-confirmation-actions">
           <button type="button" id="continue-input-btn" class="btn-secondary">入力を続ける</button>
-          <button type="button" id="finish-reset-btn" class="btn-danger">リセットして終わる</button>
+          <button type="button" id="finish-reset-btn" class="btn-danger">入力欄を空にして終わる</button>
         </div>
       </div>
     </div>
@@ -1941,6 +1941,17 @@
         hideSaveConfirmation();
         isRestoring = false;
       };
+      const clearFormAfterManualSave = () => {
+        const date = reportDate.value || currentStorageDate || formatDateInput(new Date());
+        isRestoring = true;
+        resetFormForDate(date);
+        currentStorageDate = date;
+        suppressSaveUntilEdit = true;
+        setSaveStatus(`${date} の保存データは残したまま、入力欄を空にしました`);
+        hideSaveConfirmation();
+        isRestoring = false;
+        renderManagementViews();
+      };
       const handleManualSave = () => {
         suppressSaveUntilEdit = false;
         const date = reportDate.value || currentStorageDate || formatDateInput(new Date());
@@ -2033,7 +2044,7 @@
       saveDataBtn.addEventListener('click', handleManualSave);
       resetDayBtn.addEventListener('click', resetCurrentDay);
       continueInputBtn.addEventListener('click', hideSaveConfirmation);
-      finishResetBtn.addEventListener('click', () => { resetCurrentDay({ confirmBefore:false }); });
+      finishResetBtn.addEventListener('click', clearFormAfterManualSave);
       $$('.tab-button').forEach(button => {
         button.addEventListener('click', () => switchView(button.dataset.view));
       });
