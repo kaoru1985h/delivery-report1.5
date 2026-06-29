@@ -210,13 +210,15 @@
       display:none;align-items:center;justify-content:space-between;gap:.75rem;
       padding-right:2.3rem
     }
+    .item-summary>div{min-width:0}
     .item-summary-text{font-weight:700;line-height:1.4}
     .item-summary-sub{display:block;color:var(--secondary-color);font-size:.9rem;font-weight:400;margin-top:.15rem}
     .dynamic-item.is-collapsed{padding:.85rem 1rem}
     .dynamic-item.is-collapsed .item-summary{display:flex}
     .dynamic-item.is-collapsed .item-body{display:none}
     .item-actions{display:flex;justify-content:flex-end;gap:.75rem;margin-top:1rem}
-    .item-actions button,.edit-item-btn{padding:.55rem .9rem;min-height:38px}
+    .item-actions button,.edit-item-btn{padding:.55rem .9rem;min-height:38px;white-space:nowrap}
+    .edit-item-btn{flex:0 0 auto}
     .route-picker{
       border:1px solid var(--border-color);border-radius:6px;
       padding:1rem;background:#fdfdfd
@@ -824,13 +826,16 @@
       const populateSelect = (el, opts)=>{ el.innerHTML=''; opts.forEach(t=>{ const o=document.createElement('option'); o.value=t; o.textContent=t; el.appendChild(o); }); };
       const storageKey = (date)=>`${STORAGE_PREFIX}${date}`;
       const setSaveStatus = (text)=>{ saveStatus.textContent = text; };
-      const hideSaveConfirmation = () => {
-        if(saveFeedbackTimer){ window.clearTimeout(saveFeedbackTimer); saveFeedbackTimer = null; }
+      const resetSaveFeedbackVisual = () => {
         if(savePanel){ savePanel.classList.remove('is-saved'); }
         if(saveDataBtn){
           saveDataBtn.classList.remove('is-saved');
           saveDataBtn.textContent = '今すぐ保存';
         }
+      };
+      const hideSaveConfirmation = () => {
+        if(saveFeedbackTimer){ window.clearTimeout(saveFeedbackTimer); saveFeedbackTimer = null; }
+        resetSaveFeedbackVisual();
         if(saveConfirmation){ saveConfirmation.classList.remove('is-visible'); }
       };
       const showManualSaveFeedback = (date) => {
@@ -846,11 +851,7 @@
         }
         if(saveConfirmation){ saveConfirmation.classList.add('is-visible'); }
         saveFeedbackTimer = window.setTimeout(() => {
-          if(savePanel){ savePanel.classList.remove('is-saved'); }
-          if(saveDataBtn){
-            saveDataBtn.classList.remove('is-saved');
-            saveDataBtn.textContent = '今すぐ保存';
-          }
+          resetSaveFeedbackVisual();
         }, 1800);
       };
       const todayText = () => formatDateInput(new Date());
