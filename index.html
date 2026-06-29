@@ -248,13 +248,22 @@
 
     /* --- Save controls (screen) --- */
     .save-panel{
-      display:flex;align-items:center;justify-content:space-between;gap:1rem;
+      display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap;
       background-color:var(--surface-color);border:1px solid var(--border-color);
       border-radius:8px;padding:1rem;margin-bottom:1.5rem;box-shadow:var(--shadow)
     }
+    .save-panel.is-saved{border-color:var(--success-color);box-shadow:0 0 0 3px rgba(40,167,69,.14),var(--shadow)}
     .save-panel strong{display:block;font-size:1rem}
     .save-panel span{display:block;color:var(--secondary-color);font-size:.9rem;margin-top:.15rem}
     .save-actions{display:flex;gap:.75rem;flex-shrink:0}
+    #save-data-btn.is-saved{background:var(--success-color);border-color:var(--success-color);color:#fff}
+    .save-confirmation{
+      display:none;flex:1 0 100%;border:1px solid rgba(40,167,69,.45);
+      border-radius:8px;background:#f2fbf5;padding:1rem;gap:.85rem
+    }
+    .save-confirmation.is-visible{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center}
+    .save-confirmation strong{color:#155724}
+    .save-confirmation-actions{display:flex;gap:.75rem;flex-wrap:wrap;justify-content:flex-end}
 
     /* --- Footer (screen) --- */
     footer{
@@ -272,6 +281,9 @@
       .save-panel{align-items:stretch;flex-direction:column}
       .save-actions{flex-direction:column}
       .save-actions button{width:100%}
+      .save-confirmation.is-visible{grid-template-columns:1fr}
+      .save-confirmation-actions{flex-direction:column}
+      .save-confirmation-actions button{width:100%}
       .report-calendar{gap:.25rem}
       .report-calendar-day{min-height:54px;padding:.28rem}
       .report-calendar-day-summary{font-size:.66rem}
@@ -410,7 +422,7 @@
 
         <section>
           <h2>申し送り事項</h2>
-          <div class="form-group route-field" id="next-route-field">
+          <div class="form-group route-field is-collapsed" id="next-route-field">
             <label for="next-day-route">翌日配送ルート</label>
             <div class="route-summary-box">
               <div>
@@ -419,7 +431,7 @@
               </div>
               <button type="button" id="edit-route-btn" class="btn-secondary">編集</button>
             </div>
-            <details class="route-picker" open>
+            <details class="route-picker">
               <summary>配送先一覧から順番を選択</summary>
               <p class="help-text">回る順番に配送先をタップしてください。もう一度タップすると解除できます。</p>
               <div id="next-day-route-list" class="route-order-list"></div>
@@ -444,6 +456,16 @@
       <div class="save-actions">
         <button type="button" id="save-data-btn" class="btn-secondary">今すぐ保存</button>
         <button type="button" id="reset-day-btn" class="btn-danger">この日の入力をリセット</button>
+      </div>
+      <div class="save-confirmation" id="save-confirmation" aria-live="polite">
+        <div>
+          <strong>保存しました</strong>
+          <span id="save-confirmation-text">このまま入力を続けるか、リセットして終われます。</span>
+        </div>
+        <div class="save-confirmation-actions">
+          <button type="button" id="continue-input-btn" class="btn-secondary">入力を続ける</button>
+          <button type="button" id="finish-reset-btn" class="btn-danger">リセットして終わる</button>
+        </div>
       </div>
     </div>
 
@@ -764,6 +786,11 @@
       const saveDataBtn = document.getElementById('save-data-btn');
       const resetDayBtn = document.getElementById('reset-day-btn');
       const saveStatus = document.getElementById('save-status');
+      const savePanel = document.querySelector('.save-panel');
+      const saveConfirmation = document.getElementById('save-confirmation');
+      const saveConfirmationText = document.getElementById('save-confirmation-text');
+      const continueInputBtn = document.getElementById('continue-input-btn');
+      const finishResetBtn = document.getElementById('finish-reset-btn');
 
       const deliveryList = document.getElementById('delivery-list');
       const addDeliveryBtn = document.getElementById('add-delivery-btn');
@@ -787,6 +814,7 @@
       let suppressSaveUntilEdit = false;
       let uidCounter = 0;
       let openReportDetailDate = '';
+      let saveFeedbackTimer = null;
 
       // --- Helpers ---
       const $ = (selector, root = document) => root.querySelector(selector);
@@ -796,6 +824,35 @@
       const populateSelect = (el, opts)=>{ el.innerHTML=''; opts.forEach(t=>{ const o=document.createElement('option'); o.value=t; o.textContent=t; el.appendChild(o); }); };
       const storageKey = (date)=>`${STORAGE_PREFIX}${date}`;
       const setSaveStatus = (text)=>{ saveStatus.textContent = text; };
+      const hideSaveConfirmation = () => {
+        if(saveFeedbackTimer){ window.clearTimeout(saveFeedbackTimer); saveFeedbackTimer = null; }
+        if(savePanel){ savePanel.classList.remove('is-saved'); }
+        if(saveDataBtn){
+          saveDataBtn.classList.remove('is-saved');
+          saveDataBtn.textContent = '今すぐ保存';
+        }
+        if(saveConfirmation){ saveConfirmation.classList.remove('is-visible'); }
+      };
+      const showManualSaveFeedback = (date) => {
+        if(saveFeedbackTimer){ window.clearTimeout(saveFeedbackTimer); }
+        const now = new Date();
+        if(savePanel){ savePanel.classList.add('is-saved'); }
+        if(saveDataBtn){
+          saveDataBtn.classList.add('is-saved');
+          saveDataBtn.textContent = '保存しました';
+        }
+        if(saveConfirmationText){
+          saveConfirmationText.textContent = `${date} の入力を ${formatTime(now)} に保存しました。`;
+        }
+        if(saveConfirmation){ saveConfirmation.classList.add('is-visible'); }
+        saveFeedbackTimer = window.setTimeout(() => {
+          if(savePanel){ savePanel.classList.remove('is-saved'); }
+          if(saveDataBtn){
+            saveDataBtn.classList.remove('is-saved');
+            saveDataBtn.textContent = '今すぐ保存';
+          }
+        }, 1800);
+      };
       const todayText = () => formatDateInput(new Date());
       const escapeCsv = (value) => `"${String(value == null ? '' : value).split('"').join('""')}"`;
       const escapeHtml = (value) => String(value == null ? '' : value)
@@ -1027,7 +1084,8 @@
           cleanupOther: cleanupItems.includes('その他') ? (item.querySelector('.cleanup-other')?.value.trim() || '') : '',
           inspectionItems,
           receivingItems,
-          receivingOther: receivingItems.includes('その他') ? (item.querySelector('.receiving-other')?.value.trim() || '') : ''
+          receivingOther: receivingItems.includes('その他') ? (item.querySelector('.receiving-other')?.value.trim() || '') : '',
+          collapsed: item.classList.contains('is-collapsed')
         };
       };
       const formatInternalWorkLabels = (work) => {
@@ -1594,6 +1652,7 @@
         setSelectValue(select, data.location || DELIVERY_LOCATIONS[0], other, data.other || '');
         const item = content.querySelector('.dynamic-item');
         setItemSummary(item, getDeliverySummary(item));
+        if(data.collapsed){ item.classList.add('is-collapsed'); }
         deliveryList.appendChild(content);
       };
       const createInternalWorkItem = (data = {}) => {
@@ -1654,6 +1713,7 @@
         content.querySelector('.receiving-other').value = normalizedData.receivingOther;
         const item = content.querySelector('.dynamic-item');
         setItemSummary(item, getInternalWorkSummary(item));
+        if(data.collapsed){ item.classList.add('is-collapsed'); }
         internalWorkList.appendChild(content);
       };
       const renderRouteOrderList = (routes = []) => {
@@ -1736,6 +1796,14 @@
       const expandRouteField = () => {
         nextRouteField.classList.remove('is-collapsed');
       };
+      const resetRouteFieldView = () => {
+        updateRouteSummary();
+        nextRouteField.classList.add('is-collapsed');
+      };
+      const applyRouteFieldView = (collapsed = true) => {
+        updateRouteSummary();
+        nextRouteField.classList.toggle('is-collapsed', collapsed);
+      };
       const updateRouteOrderRows = () => {
         const rows = Array.from(nextDayRouteList.querySelectorAll('.route-order-row'));
         const selectedRows = rows
@@ -1775,6 +1843,7 @@
         createDeliveryItem();
         createInternalWorkItem();
         renderRouteOrderList();
+        resetRouteFieldView();
       };
       const collectReportData = (dateOverride) => ({
         version: 2,
@@ -1789,10 +1858,14 @@
           start: item.querySelector('.delivery-start-time')?.value || '',
           end: item.querySelector('.delivery-end-time')?.value || '',
           location: item.querySelector('.delivery-location')?.value || '',
-          other: item.querySelector('.delivery-location-other')?.value.trim() || ''
+          other: item.querySelector('.delivery-location-other')?.value.trim() || '',
+          collapsed: item.classList.contains('is-collapsed')
         })),
         internalWorks: Array.from(internalWorkList.querySelectorAll('.dynamic-item')).map(collectInternalWorkFromItem),
-        nextRoutes: collectNextRoutes()
+        nextRoutes: collectNextRoutes(),
+        uiState: {
+          routeCollapsed: nextRouteField.classList.contains('is-collapsed')
+        }
       });
       const saveReport = (dateOverride, options = {}) => {
         const date = dateOverride || reportDate.value || currentStorageDate;
@@ -1841,6 +1914,7 @@
         (data.deliveries?.length ? data.deliveries : [{}]).forEach(createDeliveryItem);
         (data.internalWorks?.length ? data.internalWorks : [{}]).forEach(createInternalWorkItem);
         renderRouteOrderList(data.nextRoutes || []);
+        applyRouteFieldView(data.uiState?.routeCollapsed !== false);
 
         currentStorageDate = data.date || date;
         setSaveStatus(`${currentStorageDate} の保存データを読み込みました`);
@@ -1853,17 +1927,24 @@
         if(currentStorageDate && currentStorageDate !== nextDate){ saveReport(currentStorageDate, { silent:true }); }
         loadReport(nextDate);
       };
-      const resetCurrentDay = () => {
+      const resetCurrentDay = (options = {}) => {
         const date = reportDate.value || currentStorageDate || formatDateInput(new Date());
         const message = `PDF保存 / 印刷が終わっていることを確認してください。\n${date} の入力内容をリセットしますか？`;
-        if(!window.confirm(message)) return;
+        if(options.confirmBefore !== false && !window.confirm(message)) return;
         isRestoring = true;
         safeRemove(storageKey(date));
         resetFormForDate(date);
         currentStorageDate = date;
         suppressSaveUntilEdit = true;
         setSaveStatus(`${date} の入力をリセットしました`);
+        hideSaveConfirmation();
         isRestoring = false;
+      };
+      const handleManualSave = () => {
+        suppressSaveUntilEdit = false;
+        const date = reportDate.value || currentStorageDate || formatDateInput(new Date());
+        const saved = saveReport(date, { force:true });
+        if(saved){ showManualSaveFeedback(date); }
       };
 
       // --- Event handlers ---
@@ -1881,12 +1962,12 @@
         const completeButton = e.target.closest('.complete-item-btn');
         if(completeButton){
           const item = completeButton.closest('.dynamic-item');
-          if(item){ collapseItem(item); }
+          if(item){ collapseItem(item); scheduleSave(); }
         }
         const editButton = e.target.closest('.edit-item-btn');
         if(editButton){
           const item = editButton.closest('.dynamic-item');
-          if(item){ expandItem(item); }
+          if(item){ expandItem(item); scheduleSave(); }
         }
         if(e.target.closest('.remove-btn')){
           const item=e.target.closest('.dynamic-item');
@@ -1933,8 +2014,8 @@
         }
       });
       nextDayRouteList.addEventListener('input', () => { updateRouteSummary(); scheduleSave(); });
-      completeRouteBtn.addEventListener('click', collapseRouteField);
-      editRouteBtn.addEventListener('click', expandRouteField);
+      completeRouteBtn.addEventListener('click', () => { collapseRouteField(); scheduleSave(); });
+      editRouteBtn.addEventListener('click', () => { expandRouteField(); scheduleSave(); });
 
       addDeliveryBtn.addEventListener('click', () => { createDeliveryItem(); scheduleSave(); });
       addInternalWorkBtn.addEventListener('click', () => { createInternalWorkItem(); scheduleSave(); });
@@ -1948,8 +2029,10 @@
         updateItemSummary(e.target.closest('.dynamic-item'));
         scheduleSave();
       });
-      saveDataBtn.addEventListener('click', () => { suppressSaveUntilEdit = false; saveReport(undefined, { force:true }); });
+      saveDataBtn.addEventListener('click', handleManualSave);
       resetDayBtn.addEventListener('click', resetCurrentDay);
+      continueInputBtn.addEventListener('click', hideSaveConfirmation);
+      finishResetBtn.addEventListener('click', () => { resetCurrentDay({ confirmBefore:false }); });
       $$('.tab-button').forEach(button => {
         button.addEventListener('click', () => switchView(button.dataset.view));
       });
