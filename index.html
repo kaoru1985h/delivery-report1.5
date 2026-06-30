@@ -194,8 +194,9 @@
     .inspection-detail>label{display:block;font-weight:700;margin-bottom:.5rem}
     .inspection-options{
       display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));
-      gap:.5rem
+      gap:.5rem;margin-bottom:.75rem
     }
+    .inspection-other-wrap{display:none;margin-top:.5rem}
     .receiving-detail{
       display:none;margin-top:.75rem;padding:.75rem;
       border-left:3px solid var(--success-color);background:#f8fff9;border-radius:0 6px 6px 0
@@ -244,7 +245,6 @@
       border:1px solid var(--border-color);border-radius:6px;padding:.85rem 1rem;background:#fdfdfd
     }
     .route-summary-text{font-weight:700;line-height:1.45}
-    .route-summary-sub{display:block;color:var(--secondary-color);font-size:.9rem;font-weight:400;margin-top:.15rem}
     .route-field.is-collapsed .route-picker{display:none}
     .route-field.is-collapsed .route-summary-box{display:flex}
 
@@ -429,7 +429,6 @@
             <div class="route-summary-box">
               <div>
                 <span class="route-summary-text">ルート未選択</span>
-                <span class="route-summary-sub">入力済み</span>
               </div>
               <button type="button" id="edit-route-btn" class="btn-secondary">編集</button>
             </div>
@@ -457,7 +456,7 @@
       </div>
       <div class="save-actions">
         <button type="button" id="save-data-btn" class="btn-secondary">今すぐ保存</button>
-        <button type="button" id="reset-day-btn" class="btn-danger">入力欄だけリセット</button>
+        <button type="button" id="reset-day-btn" class="btn-danger">リセット</button>
       </div>
       <div class="save-confirmation" id="save-confirmation" aria-live="polite">
         <div>
@@ -651,6 +650,11 @@
           <div class="inspection-detail">
             <label>検査の内容（複数選択可）</label>
             <div class="inspection-options"></div>
+            <div class="inspection-other-wrap">
+              <label>その他の検査内容（任意）</label>
+              <input type="text" class="inspection-other" placeholder="例: 部材、外観確認など">
+              <p class="help-text">空欄のままでも保存できます。</p>
+            </div>
           </div>
           <div class="receiving-detail">
             <label>荷受けの内容（複数選択可）</label>
@@ -761,11 +765,15 @@
     document.addEventListener('DOMContentLoaded', () => {
       // --- Constants ---
       const DELIVERY_LOCATIONS = ['エバーメイト','ハマ','ヤマノセンター','協和ゴム','三宝','山野美容','資生堂','寿硝子','渋谷美容','深井硝子','大成化学','東京硝子','藤本科学','日本美容','牧口ゴム','明方堂','その他'];
-      const DEFAULT_INTERNAL_WORK_ITEMS = ['工場成形品回収','片付け','検査','次回配送準備','荷受け','内職準備','内職配送','その他'];
+      const DEFAULT_INTERNAL_WORK_ITEMS = ['工場回収','片付け','検査','配送準備','荷受け','内職準備','内職配送','その他'];
       const CLEANUP_WORK_ITEMS = ['指定納期','在庫品','資材','内職回収品','工場回収品','その他'];
-      const INSPECTION_WORK_ITEMS = ['ノズルチップ','トリガー','瓶体','PPキャップ'];
+      const INSPECTION_WORK_ITEMS = ['ノズルチップ','トリガー','瓶体','PPキャップ','その他'];
       const RECEIVING_WORK_ITEMS = ['橋本瓶体','その他'];
       const DEFAULT_USER_NAME = '比留田　薫';
+      const WORK_ITEM_RENAME_MAP = {
+        '工場成形品回収':'工場回収',
+        '次回配送準備':'配送準備'
+      };
       const LEGACY_CLEANUP_WORK_MAP = {
         '工場形品片付け':'資材',
         '指定納期品片付け':'指定納期',
@@ -938,15 +946,16 @@
         const seen = {};
         const cleaned = [];
         (items || []).forEach(item => {
-          const value = String(item || '').trim();
+          const rawValue = String(item || '').trim();
+          const value = WORK_ITEM_RENAME_MAP[rawValue] || rawValue;
           if(value && !seen[value]){
             seen[value] = true;
-            if(value !== 'その他' && !LEGACY_CLEANUP_WORK_MAP[value] && !LEGACY_INSPECTION_WORK_MAP[value]) cleaned.push(value);
-            if(LEGACY_CLEANUP_WORK_MAP[value] && !seen['片付け']){
+            if(value !== 'その他' && !LEGACY_CLEANUP_WORK_MAP[rawValue] && !LEGACY_INSPECTION_WORK_MAP[rawValue]) cleaned.push(value);
+            if(LEGACY_CLEANUP_WORK_MAP[rawValue] && !seen['片付け']){
               seen['片付け'] = true;
               cleaned.push('片付け');
             }
-            if(LEGACY_INSPECTION_WORK_MAP[value] && !seen['検査']){
+            if(LEGACY_INSPECTION_WORK_MAP[rawValue] && !seen['検査']){
               seen['検査'] = true;
               cleaned.push('検査');
             }
@@ -977,6 +986,12 @@
         const detail = item ? item.querySelector('.inspection-detail') : null;
         if(detail){ detail.style.display = visible ? 'block' : 'none'; }
       };
+      const setInspectionOtherVisible = (item, visible) => {
+        const detail = item ? item.querySelector('.inspection-other-wrap') : null;
+        const otherInput = item ? item.querySelector('.inspection-other') : null;
+        if(detail){ detail.style.display = visible ? 'block' : 'none'; }
+        if(visible && otherInput){ otherInput.focus(); }
+      };
       const setReceivingDetailVisible = (item, visible) => {
         const detail = item ? item.querySelector('.receiving-detail') : null;
         if(detail){ detail.style.display = visible ? 'block' : 'none'; }
@@ -988,7 +1003,9 @@
         if(visible && otherInput){ otherInput.focus(); }
       };
       const normalizeInternalWorkData = (data = {}) => {
-        const items = Array.isArray(data.items) ? data.items.slice() : [];
+        const items = Array.isArray(data.items)
+          ? data.items.map(item => WORK_ITEM_RENAME_MAP[item] || item)
+          : [];
         const cleanupItems = Array.isArray(data.cleanupItems) ? data.cleanupItems.slice() : [];
         const inspectionItems = Array.isArray(data.inspectionItems) ? data.inspectionItems.slice() : [];
         const receivingItems = Array.isArray(data.receivingItems) ? data.receivingItems.slice() : [];
@@ -1008,8 +1025,10 @@
         });
         const normalizedItems = normalizeWorkItems(items);
         const cleanupOther = data.cleanupOther || '';
+        const inspectionOther = data.inspectionOther || '';
         const receivingOther = data.receivingOther || '';
         if(cleanupOther && !cleanupItems.includes('その他')) cleanupItems.push('その他');
+        if(inspectionOther && !inspectionItems.includes('その他')) inspectionItems.push('その他');
         if(receivingOther && !receivingItems.includes('その他')) receivingItems.push('その他');
         return {
           start: data.start || '',
@@ -1023,6 +1042,7 @@
           cleanupItems: normalizeCleanupItems(cleanupItems),
           cleanupOther,
           inspectionItems: normalizeInspectionItems(inspectionItems),
+          inspectionOther,
           receivingItems: normalizeReceivingItems(receivingItems),
           receivingOther
         };
@@ -1084,6 +1104,7 @@
           cleanupItems,
           cleanupOther: cleanupItems.includes('その他') ? (item.querySelector('.cleanup-other')?.value.trim() || '') : '',
           inspectionItems,
+          inspectionOther: inspectionItems.includes('その他') ? (item.querySelector('.inspection-other')?.value.trim() || '') : '',
           receivingItems,
           receivingOther: receivingItems.includes('その他') ? (item.querySelector('.receiving-other')?.value.trim() || '') : '',
           collapsed: item.classList.contains('is-collapsed')
@@ -1093,7 +1114,13 @@
         const normalized = normalizeInternalWorkData(work);
         const labels = normalized.items.map(item => {
           if(item === 'その他') return normalized.other || 'その他';
-          if(item === '検査') return normalized.inspectionItems.length ? `検査（${normalized.inspectionItems.join('、')}）` : '検査';
+          if(item === '検査'){
+            const inspectionLabels = normalized.inspectionItems.map(inspection => {
+              if(inspection === 'その他') return normalized.inspectionOther ? `その他（${normalized.inspectionOther}）` : 'その他';
+              return inspection;
+            });
+            return inspectionLabels.length ? `検査（${inspectionLabels.join('、')}）` : '検査';
+          }
           if(item === '荷受け'){
             const receivingLabels = normalized.receivingItems.map(receiving => {
               if(receiving === 'その他') return normalized.receivingOther ? `その他（${normalized.receivingOther}）` : 'その他';
@@ -1120,7 +1147,12 @@
           }
           if(item === '検査'){
             if(normalized.inspectionItems.length){
-              normalized.inspectionItems.forEach(inspection => labels.push(`検査（${inspection}）`));
+              normalized.inspectionItems.forEach(inspection => {
+                const label = inspection === 'その他' && normalized.inspectionOther
+                  ? `その他（${normalized.inspectionOther}）`
+                  : inspection;
+                labels.push(`検査（${label}）`);
+              });
             }else{
               labels.push('検査');
             }
@@ -1707,6 +1739,9 @@
         content.querySelector('.cleanup-other').value = normalizedData.cleanupOther;
         const inspectionDetail = content.querySelector('.inspection-detail');
         if(inspectionDetail){ inspectionDetail.style.display = selectedItems.includes('検査') ? 'block' : 'none'; }
+        const inspectionOtherWrap = content.querySelector('.inspection-other-wrap');
+        if(inspectionOtherWrap){ inspectionOtherWrap.style.display = normalizedData.inspectionItems.includes('その他') ? 'block' : 'none'; }
+        content.querySelector('.inspection-other').value = normalizedData.inspectionOther;
         const receivingDetail = content.querySelector('.receiving-detail');
         if(receivingDetail){ receivingDetail.style.display = selectedItems.includes('荷受け') ? 'block' : 'none'; }
         const receivingOtherWrap = content.querySelector('.receiving-other-wrap');
@@ -1780,14 +1815,10 @@
       const updateRouteSummary = () => {
         const routes = collectNextRoutes();
         const text = nextRouteField.querySelector('.route-summary-text');
-        const sub = nextRouteField.querySelector('.route-summary-sub');
         if(text){
           text.textContent = routes.length
             ? routes.map((route, idx) => `${idx + 1}. ${routeLabel(route)}`).join(' / ')
             : 'ルート未選択';
-        }
-        if(sub){
-          sub.textContent = routes.length ? `${routes.length}件選択済み` : '入力済み';
         }
       };
       const collapseRouteField = () => {
@@ -2011,6 +2042,9 @@
         }
         if(e.target.classList.contains('cleanup-checkbox') && e.target.value==='その他'){
           setCleanupOtherVisible(e.target.closest('.dynamic-item'), e.target.checked);
+        }
+        if(e.target.classList.contains('inspection-checkbox') && e.target.value==='その他'){
+          setInspectionOtherVisible(e.target.closest('.dynamic-item'), e.target.checked);
         }
         if(e.target.classList.contains('receiving-checkbox') && e.target.value==='その他'){
           setReceivingOtherVisible(e.target.closest('.dynamic-item'), e.target.checked);
