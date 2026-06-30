@@ -457,7 +457,7 @@
       </div>
       <div class="save-actions">
         <button type="button" id="save-data-btn" class="btn-secondary">今すぐ保存</button>
-        <button type="button" id="reset-day-btn" class="btn-danger">この日の入力をリセット</button>
+        <button type="button" id="reset-day-btn" class="btn-danger">入力欄だけリセット</button>
       </div>
       <div class="save-confirmation" id="save-confirmation" aria-live="polite">
         <div>
@@ -1930,16 +1930,16 @@
       };
       const resetCurrentDay = (options = {}) => {
         const date = reportDate.value || currentStorageDate || formatDateInput(new Date());
-        const message = `PDF保存 / 印刷が終わっていることを確認してください。\n${date} の入力内容をリセットしますか？`;
+        const message = `${date} の保存済み日報は残したまま、入力欄だけ空にしますか？`;
         if(options.confirmBefore !== false && !window.confirm(message)) return;
         isRestoring = true;
-        safeRemove(storageKey(date));
         resetFormForDate(date);
         currentStorageDate = date;
         suppressSaveUntilEdit = true;
-        setSaveStatus(`${date} の入力をリセットしました`);
+        setSaveStatus(`${date} の保存データは残したまま、入力欄を空にしました`);
         hideSaveConfirmation();
         isRestoring = false;
+        renderManagementViews();
       };
       const clearFormAfterManualSave = () => {
         const date = reportDate.value || currentStorageDate || formatDateInput(new Date());
