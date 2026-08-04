@@ -266,6 +266,10 @@
     .save-confirmation.is-visible{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center}
     .save-confirmation strong{color:#155724}
     .save-confirmation-actions{display:flex;gap:.75rem;flex-wrap:wrap;justify-content:flex-end}
+    .sync-settings{display:grid;gap:1rem}
+    .sync-status-box{border:1px solid var(--border-color);border-radius:6px;background:#f8f9fa;padding:.85rem 1rem}
+    .sync-status-box strong{display:block;margin-bottom:.2rem}
+    .sync-settings .button-row{margin-top:0}
 
     /* --- Footer (screen) --- */
     footer{
@@ -574,6 +578,30 @@
           <h2>保存状況</h2>
           <div id="storage-summary" class="empty">保存データを確認中</div>
         </div>
+        <div class="panel">
+          <h2>Google Sheets連携</h2>
+          <p class="help-text">Apps ScriptのWeb App URLと端末キーは、この端末だけに保存されます。JSON・CSVには含まれません。</p>
+          <div class="sync-settings">
+            <div class="form-group">
+              <label for="sheets-web-app-url">Web App URL</label>
+              <input type="password" id="sheets-web-app-url" autocomplete="off" placeholder="https://script.google.com/macros/s/.../exec">
+            </div>
+            <div class="form-group">
+              <label for="sheets-device-key">端末キー</label>
+              <input type="password" id="sheets-device-key" autocomplete="new-password" placeholder="端末キーを入力">
+            </div>
+            <label><input type="checkbox" id="show-sheets-settings"> 設定値を表示</label>
+            <div class="button-row">
+              <button type="button" id="save-sheets-settings-btn" class="btn">連携設定を保存</button>
+              <button type="button" id="retry-sheets-sync-btn" class="btn-secondary">未同期を再送</button>
+              <button type="button" id="sync-all-reports-btn" class="btn-secondary">過去データをまとめて同期</button>
+            </div>
+            <div class="sync-status-box" aria-live="polite">
+              <strong id="sheets-sync-state">未設定</strong>
+              <span id="sheets-sync-detail">設定しなくても端末への保存は利用できます。</span>
+            </div>
+          </div>
+        </div>
       </section>
     </div>
   </div>
@@ -787,6 +815,9 @@
       };
       const STORAGE_PREFIX = 'delivery-report:v2:';
       const NOTE_STORAGE_KEY = 'delivery-report:notes:v1';
+      const SHEETS_SETTINGS_KEY = 'delivery-report:sheets-settings:v1';
+      const SHEETS_QUEUE_KEY = 'delivery-report:sheets-queue:v1';
+      const SHEETS_API_VERSION = 1;
 
       // --- Element Refs ---
       const reportForm = document.getElementById('reportForm');
@@ -941,6 +972,159 @@
       const safeRemove = (key) => {
         try{ localStorage.removeItem(key); return true; }
         catch(_){ setSaveStatus('保存データを削除できませんでした'); return false; }
+      };
+      const createRequestId = () => `${Date.now()}-${Math.random().toString(16).slice(2)}-${Math.random().toString(16).slice(2)}`;
+      const getSheetsSettings = () => {
+        const settings = readJson(SHEETS_SETTINGS_KEY, {});
+        return settings && typeof settings === 'object' ? settings : {};
+      };
+      const getSyncQueue = () => {
+        const queue = readJson(SHEETS_QUEUE_KEY, []);
+        return Array.isArray(queue) ? queue : [];
+      };
+      const setSyncQueue = (queue) => safeSet(SHEETS_QUEUE_KEY, JSON.stringify(queue));
+      const isSheetsConfigured = () => {
+        const settings = getSheetsSettings();
+        return Boolean(settings.url && settings.deviceKey);
+      };
+      const updateSheetsSyncStatus = (state, detail) => {
+        const stateElement = document.getElementById('sheets-sync-state');
+        const detailElement = document.getElementById('sheets-sync-detail');
+        if(stateElement) stateElement.textContent = state;
+        if(detailElement) detailElement.textContent = detail || '';
+      };
+      const renderSheetsSyncStatus = () => {
+        const queue = getSyncQueue();
+        if(!isSheetsConfigured()){
+          updateSheetsSyncStatus('未設定', '設定しなくても端末への保存は利用できます。');
+          return;
+        }
+        if(queue.length){
+          const retryCount = queue.filter(item => item.state === 'retry').length;
+          updateSheetsSyncStatus(retryCount ? '再送が必要' : '未同期', `未同期 ${queue.length}件`);
+          return;
+        }
+        updateSheetsSyncStatus('同期済み', '未同期のデータはありません。');
+      };
+      const loadSheetsSettingsForm = () => {
+        const settings = getSheetsSettings();
+        const urlInput = document.getElementById('sheets-web-app-url');
+        const keyInput = document.getElementById('sheets-device-key');
+        if(urlInput) urlInput.value = settings.url || '';
+        if(keyInput) keyInput.value = settings.deviceKey || '';
+        renderSheetsSyncStatus();
+      };
+      const enqueueSheetsAction = (action, entity, requestId) => {
+        if(!isSheetsConfigured()) return null;
+        const queue = getSyncQueue();
+        const id = requestId || createRequestId();
+        if(queue.some(item => item.requestId === id)) return id;
+        queue.push({
+          requestId:id,
+          action:action,
+          entity:entity,
+          createdAt:new Date().toISOString(),
+          attempts:0,
+          state:'pending'
+        });
+        setSyncQueue(queue);
+        renderSheetsSyncStatus();
+        return id;
+      };
+      const checkSheetsRequestStatus = (url, requestId) => new Promise((resolve, reject) => {
+        const callbackName = `deliverySheetsStatus_${String(requestId).replace(/[^a-zA-Z0-9_]/g, '_')}`;
+        const script = document.createElement('script');
+        const separator = url.indexOf('?') === -1 ? '?' : '&';
+        let finished = false;
+        const cleanup = () => {
+          if(script.parentNode) script.parentNode.removeChild(script);
+          try{ delete window[callbackName]; }catch(_){ window[callbackName] = undefined; }
+        };
+        const timer = window.setTimeout(() => {
+          if(finished) return;
+          finished = true;
+          cleanup();
+          reject(new Error('status_timeout'));
+        }, 7000);
+        window[callbackName] = result => {
+          if(finished) return;
+          finished = true;
+          window.clearTimeout(timer);
+          cleanup();
+          const status = result && String(result.status || '').toLowerCase();
+          if(result && (result.ok === true || status === 'success' || status === 'synced' || status === 'processed')) resolve(result);
+          else reject(new Error(result && (result.error || result.message) || 'status_not_confirmed'));
+        };
+        script.onerror = () => {
+          if(finished) return;
+          finished = true;
+          window.clearTimeout(timer);
+          cleanup();
+          reject(new Error('status_error'));
+        };
+        script.src = `${url}${separator}action=status&request_id=${encodeURIComponent(requestId)}&callback=${encodeURIComponent(callbackName)}`;
+        document.head.appendChild(script);
+      });
+      const sendSyncQueueItem = (item, settings) => {
+        const payload = {
+          api_version:SHEETS_API_VERSION,
+          action:item.action,
+          request_id:item.requestId,
+          device_key:settings.deviceKey,
+          entity:item.entity
+        };
+        return fetch(settings.url, {
+          method:'POST',
+          mode:'no-cors',
+          headers:{ 'Content-Type':'text/plain;charset=utf-8' },
+          body:JSON.stringify(payload)
+        }).then(() => checkSheetsRequestStatus(settings.url, item.requestId));
+      };
+      let isSyncingSheets = false;
+      const processSheetsQueue = (attemptedRequestIds) => {
+        const attempted = attemptedRequestIds && attemptedRequestIds.constructor === Object ? attemptedRequestIds : {};
+        if(isSyncingSheets || !isSheetsConfigured() || !navigator.onLine) return Promise.resolve(false);
+        const settings = getSheetsSettings();
+        const first = getSyncQueue()[0];
+        if(!first){ renderSheetsSyncStatus(); return Promise.resolve(true); }
+        if(attempted[first.requestId]){
+          renderSheetsSyncStatus();
+          return Promise.resolve(false);
+        }
+        attempted[first.requestId] = true;
+        isSyncingSheets = true;
+        first.state = 'sending';
+        first.attempts = Number(first.attempts || 0) + 1;
+        const queue = getSyncQueue();
+        if(queue[0] && queue[0].requestId === first.requestId){ queue[0] = first; setSyncQueue(queue); }
+        updateSheetsSyncStatus('送信中', `未同期 ${queue.length}件`);
+        return sendSyncQueueItem(first, settings).then(() => {
+          const latest = getSyncQueue().filter(item => item.requestId !== first.requestId);
+          setSyncQueue(latest);
+          isSyncingSheets = false;
+          renderSheetsSyncStatus();
+          if(latest.length) return processSheetsQueue(attempted);
+          return true;
+        }).catch(error => {
+          const latest = getSyncQueue();
+          const targetIndex = latest.findIndex(item => item.requestId === first.requestId);
+          const target = targetIndex >= 0 ? latest[targetIndex] : null;
+          if(target){ target.state = 'retry'; target.lastError = String(error && error.message || 'sync_failed'); }
+          if(targetIndex >= 0 && latest.length > 1){
+            latest.splice(targetIndex, 1);
+            latest.push(target);
+          }
+          setSyncQueue(latest);
+          isSyncingSheets = false;
+          renderSheetsSyncStatus();
+          if(latest.length > 1 && !attempted[latest[0].requestId]) return processSheetsQueue(attempted);
+          return false;
+        });
+      };
+      const queueAndSendSheetsAction = (action, entity) => {
+        const requestId = enqueueSheetsAction(action, entity);
+        if(requestId) processSheetsQueue();
+        return requestId;
       };
       const normalizeWorkItems = (items) => {
         const seen = {};
@@ -1593,6 +1777,7 @@
         const first = reports[0]?.date || '-';
         const last = reports[reports.length - 1]?.date || '-';
         summary.textContent = `日報 ${reports.length}件 / メモ ${notes.length}件 / 期間 ${first} 〜 ${last}`;
+        renderSheetsSyncStatus();
       };
       const renderManagementViews = () => {
         renderAnalysisView();
@@ -1612,14 +1797,16 @@
           return;
         }
         const notes = getNotes();
-        notes.unshift({
+        const note = {
           id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
           date: $('#note-date')?.value || reportDate.value || todayText(),
           kind: $('#note-kind')?.value || '改善',
           body,
           updatedAt: new Date().toISOString()
-        });
-        setNotes(notes);
+        };
+        notes.unshift(note);
+        if(!setNotes(notes)) return;
+        queueAndSendSheetsAction('upsert_note', note);
         clearNoteForm();
         renderManagementViews();
         setSaveStatus('メモを保存しました');
@@ -1987,7 +2174,14 @@
         suppressSaveUntilEdit = false;
         const date = reportDate.value || currentStorageDate || formatDateInput(new Date());
         const saved = saveReport(date, { force:true });
-        if(saved){ showManualSaveFeedback(date); }
+        if(saved){
+          showManualSaveFeedback(date);
+          const raw = safeGet(storageKey(date));
+          if(raw){
+            try{ queueAndSendSheetsAction('upsert_report', JSON.parse(raw)); }
+            catch(_){}
+          }
+        }
       };
 
       // --- Event handlers ---
@@ -2091,7 +2285,10 @@
         const button = event.target.closest('.delete-note-btn');
         if(!button) return;
         if(!window.confirm('このメモを削除しますか？')) return;
-        setNotes(getNotes().filter(note => note.id !== button.dataset.noteId));
+        const noteId = button.dataset.noteId;
+        const note = getNotes().find(item => item.id === noteId);
+        if(!setNotes(getNotes().filter(item => item.id !== noteId))) return;
+        if(note) queueAndSendSheetsAction('delete_note', { note_id:note.id, id:note.id });
         renderManagementViews();
         setSaveStatus('メモを削除しました');
       });
@@ -2116,7 +2313,15 @@
         if(deleteButton){
           const label = report?.date || '日付未入力';
           if(!reportId || !window.confirm(`${label} の保存済み日報を削除しますか？`)) return;
-          safeRemove(reportId);
+          let deleteFromSheets = false;
+          if(isSheetsConfigured()){
+            deleteFromSheets = window.confirm('Google Sheetsからも削除しますか？\n「キャンセル」を選ぶと、この端末からだけ削除します。');
+          }
+          if(!safeRemove(reportId)) return;
+          if(deleteFromSheets){
+            const deletedDate = report && report.date ? report.date : '';
+            queueAndSendSheetsAction('delete_report', { report_id:deletedDate, date:deletedDate });
+          }
           if(openReportDetailDate === reportId){
             renderReportDetail(null);
           }
@@ -2141,6 +2346,69 @@
       $('#export-reports-csv-btn')?.addEventListener('click', exportReportsCsv);
       $('#export-work-csv-btn')?.addEventListener('click', exportWorkCsv);
       $('#export-notes-csv-btn')?.addEventListener('click', exportNotesCsv);
+      const saveSheetsSettings = () => {
+        const urlInput = document.getElementById('sheets-web-app-url');
+        const keyInput = document.getElementById('sheets-device-key');
+        const url = urlInput ? urlInput.value.trim() : '';
+        const deviceKey = keyInput ? keyInput.value.trim() : '';
+        if((url && !deviceKey) || (!url && deviceKey)){
+          window.alert('Web App URLと端末キーを両方入力してください。');
+          return;
+        }
+        if(url && !/^https:\/\/script\.google\.com\//.test(url)){
+          window.alert('Apps ScriptのWeb App URLを確認してください。');
+          return;
+        }
+        if(!safeSet(SHEETS_SETTINGS_KEY, JSON.stringify({ url:url, deviceKey:deviceKey }))) return;
+        renderSheetsSyncStatus();
+        setSaveStatus(url ? 'Google Sheets連携設定をこの端末に保存しました' : 'Google Sheets連携設定を解除しました');
+        if(url) processSheetsQueue();
+      };
+      const syncAllSavedData = () => {
+        if(!isSheetsConfigured()){
+          window.alert('先にWeb App URLと端末キーを保存してください。');
+          return;
+        }
+        const reports = getAllReports();
+        const notes = getNotes();
+        if(!reports.length && !notes.length){
+          window.alert('同期できる保存済みデータはありません。');
+          return;
+        }
+        const queue = getSyncQueue();
+        const queuedDates = {};
+        const queuedNoteIds = {};
+        queue.forEach(item => {
+          if(item.action === 'upsert_report' && item.entity && item.entity.date) queuedDates[item.entity.date] = true;
+          if(item.action === 'upsert_note' && item.entity && item.entity.id) queuedNoteIds[item.entity.id] = true;
+        });
+        reports.forEach(report => {
+          if(queuedDates[report.date]) return;
+          const entity = Object.assign({}, report);
+          delete entity._storageKey;
+          enqueueSheetsAction('upsert_report', entity);
+        });
+        notes.forEach(note => {
+          if(!note || !note.id || queuedNoteIds[note.id]) return;
+          enqueueSheetsAction('upsert_note', Object.assign({}, note));
+        });
+        processSheetsQueue();
+      };
+      const settingsSaveButton = document.getElementById('save-sheets-settings-btn');
+      const retrySyncButton = document.getElementById('retry-sheets-sync-btn');
+      const syncAllButton = document.getElementById('sync-all-reports-btn');
+      const showSettingsCheckbox = document.getElementById('show-sheets-settings');
+      if(settingsSaveButton) settingsSaveButton.addEventListener('click', saveSheetsSettings);
+      if(retrySyncButton) retrySyncButton.addEventListener('click', processSheetsQueue);
+      if(syncAllButton) syncAllButton.addEventListener('click', syncAllSavedData);
+      if(showSettingsCheckbox) showSettingsCheckbox.addEventListener('change', () => {
+        const inputType = showSettingsCheckbox.checked ? 'text' : 'password';
+        const urlInput = document.getElementById('sheets-web-app-url');
+        const keyInput = document.getElementById('sheets-device-key');
+        if(urlInput) urlInput.type = inputType;
+        if(keyInput) keyInput.type = inputType;
+      });
+      window.addEventListener('online', processSheetsQueue);
       window.addEventListener('beforeunload', () => saveReport(currentStorageDate || reportDate.value, { silent:true }));
 
       // ---- 印刷用：紙レイアウトへデータ流し込み ----
@@ -2228,8 +2496,10 @@
       // --- Initial State ---
       currentStorageDate = formatDateInput(new Date());
       $('#note-date').value = currentStorageDate;
+      loadSheetsSettingsForm();
       renderManagementViews();
       loadReport(currentStorageDate);
+      processSheetsQueue();
     });
   </script>
 </body>

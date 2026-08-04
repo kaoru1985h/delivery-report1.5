@@ -13,6 +13,12 @@
 - `sw.js`: 公開URLで開いた後のオフライン用キャッシュ
 - `icon.svg`: アプリアイコン
 
-## 注意
+## Google Sheets連携
 
-現在の保存先は端末内です。スマホとPCでデータを自動共有するには、次の段階でGoogleスプレッドシート連携を追加します。
+端末内の自動保存に加えて、確定保存した日報とメモをGoogle Sheetsへ同期できます。
+
+1. `google-apps-script/Code.gs` をApps Scriptへ登録します。
+2. スクリプトプロパティとWeb Appを設定します。
+3. アプリの「保存管理 → Google Sheets連携」にWeb App URLと端末キーを入力します。
+
+詳しい導入手順は `google-apps-script/README.md` を参照してください。通信できない場合も端末内の保存は継続し、未同期データは後から再送できます。

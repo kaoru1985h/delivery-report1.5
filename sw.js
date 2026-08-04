@@ -1,4 +1,4 @@
-const CACHE_NAME = 'delivery-report-v2';
+const CACHE_NAME = 'delivery-report-v3-sheets-sync';
 const APP_FILES = [
   './',
   './index.html',
@@ -26,11 +26,16 @@ self.addEventListener('activate', (event) => {
 
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
+  const requestUrl = new URL(event.request.url);
+  // Apps Script の状態確認(JSONP)など、外部APIの応答はキャッシュしない。
+  if (requestUrl.origin !== self.location.origin) return;
   event.respondWith(
     caches.match(event.request).then((cached) => {
       return cached || fetch(event.request).then((response) => {
-        const copy = response.clone();
-        caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy));
+        if (response.ok && response.type === 'basic') {
+          const copy = response.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy));
+        }
         return response;
       });
     })
