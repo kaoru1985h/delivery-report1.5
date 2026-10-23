@@ -1,4 +1,4 @@
-const CACHE_NAME = 'delivery-report-v3-sheets-sync';
+const CACHE_NAME = 'delivery-report-v4-security-fix';
 const APP_FILES = [
   './',
   './index.html',

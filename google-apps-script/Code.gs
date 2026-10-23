@@ -20,15 +20,19 @@ function doPost(e) {
   var requestId = '';
   var action = '';
   var targetId = '';
+  var authenticated = false;
+  var lockAcquired = false;
   try {
     var payload = parsePayload_(e);
     requestId = requireId_(payload.request_id, 'request_id');
     action = requireAction_(payload.action);
     validateApiVersion_(payload.api_version);
     validateDeviceKey_(payload.device_key);
+    authenticated = true;
     targetId = entityId_(action, payload.entity);
 
     lock.waitLock(30000);
+    lockAcquired = true;
     var spreadsheet = getSpreadsheet_();
     ensureSheets_(spreadsheet);
     cleanupSampleRows_(spreadsheet);
@@ -50,7 +54,7 @@ function doPost(e) {
   } catch (error) {
     var code = safeErrorCode_(error);
     try {
-      if (requestId) {
+      if (authenticated && lockAcquired && requestId) {
         var errorSpreadsheet = getSpreadsheet_();
         ensureSheets_(errorSpreadsheet);
         upsertLog_(errorSpreadsheet, requestId, action, targetId, 'error', new Date(), code);
@@ -58,7 +62,9 @@ function doPost(e) {
     } catch (ignored) {}
     return json_({ ok: false, status: 'error', error_code: code });
   } finally {
-    try { lock.releaseLock(); } catch (ignoredRelease) {}
+    if (lockAcquired) {
+      try { lock.releaseLock(); } catch (ignoredRelease) {}
+    }
   }
 }
 
@@ -72,7 +78,6 @@ function doGet(e) {
   try {
     var requestId = requireId_(e.parameter.request_id, 'request_id');
     var spreadsheet = getSpreadsheet_();
-    ensureSheets_(spreadsheet);
     var found = findLog_(spreadsheet, requestId);
     if (found) {
       result.status = found.status === 'processed' ? 'processed' : (found.status === 'error' ? 'error' : 'pending');

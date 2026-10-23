@@ -894,7 +894,13 @@
         }, 1800);
       };
       const todayText = () => formatDateInput(new Date());
-      const escapeCsv = (value) => `"${String(value == null ? '' : value).split('"').join('""')}"`;
+      const escapeCsv = (value) => {
+        const text = String(value == null ? '' : value);
+        // CSV quoting alone does not prevent spreadsheet formula execution.
+        // Include whitespace-prefixed formulas and leading tab/newline controls.
+        const safeText = /^\s*[=+@-]/u.test(text) || /^\s*[\t\r\n]/u.test(text) ? `'${text}` : text;
+        return `"${safeText.split('"').join('""')}"`;
+      };
       const escapeHtml = (value) => String(value == null ? '' : value)
         .replace(/&/g, '&amp;')
         .replace(/</g, '&lt;')
@@ -1710,7 +1716,7 @@
         rows.forEach(row => {
           const card = document.createElement('article');
           card.className = 'info-card';
-          card.innerHTML = `<strong>${row.tag}</strong><p>平均 ${formatMinutes(row.avg)} / 回数 ${row.count}回 / 最短 ${formatMinutes(row.min)} / 最長 ${formatMinutes(row.max)}</p>`;
+          card.innerHTML = `<strong>${escapeHtml(row.tag)}</strong><p>平均 ${formatMinutes(row.avg)} / 回数 ${row.count}回 / 最短 ${formatMinutes(row.min)} / 最長 ${formatMinutes(row.max)}</p>`;
           list.appendChild(card);
         });
       };
@@ -1760,10 +1766,10 @@
           const card = document.createElement('article');
           card.className = 'note-card';
           card.innerHTML = `
-            <div class="note-meta"><span>${note.date || ''}</span><span>${normalizeNoteKind(note.kind || '')}</span></div>
-            <strong>${note.body || ''}</strong>
+            <div class="note-meta"><span>${escapeHtml(note.date || '')}</span><span>${escapeHtml(normalizeNoteKind(note.kind || ''))}</span></div>
+            <strong>${escapeHtml(note.body || '')}</strong>
             <div class="button-row" style="margin-top:.75rem">
-              <button type="button" class="btn-secondary delete-note-btn" data-note-id="${note.id}">削除</button>
+              <button type="button" class="btn-secondary delete-note-btn" data-note-id="${escapeHtml(note.id)}">削除</button>
             </div>
           `;
           list.appendChild(card);
@@ -2444,7 +2450,7 @@
           let place=sel?sel.value:'';
           if(place==='その他' && oth && oth.value.trim()) place=oth.value.trim();
           const tr=document.createElement('tr');
-          tr.innerHTML=`<td>${(s||e)?`${s} 〜 ${e}`:'　'}</td><td>${place||'　'}</td>`;
+          tr.innerHTML=`<td>${escapeHtml((s||e)?`${s} 〜 ${e}`:'　')}</td><td>${escapeHtml(place||'　')}</td>`;
           delBody.appendChild(tr);
         });
         while(delBody.children.length < 6){ const tr=document.createElement('tr'); tr.innerHTML=`<td>　</td><td>　</td>`; delBody.appendChild(tr); }
@@ -2477,7 +2483,7 @@
         }
         printWorkRows.forEach(row=>{
           const tr=document.createElement('tr');
-          tr.innerHTML=`<td>${row.time}</td><td>${row.label}</td>`;
+          tr.innerHTML=`<td>${escapeHtml(row.time)}</td><td>${escapeHtml(row.label)}</td>`;
           inBody.appendChild(tr);
         });
         while(inBody.children.length < 6){ const tr=document.createElement('tr'); tr.innerHTML=`<td>　</td><td>　</td>`; inBody.appendChild(tr); }
